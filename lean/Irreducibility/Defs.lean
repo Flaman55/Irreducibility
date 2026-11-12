@@ -198,6 +198,38 @@ the common rings, then compare from the top. -/
     | _, _ => none
   | _, _ => none
 
+/-! ## Primality on a drum
+
+A number is given by its states on a drum. Trial rings `m = 2, 3, ...` are compared with it
+through their own states `m % c` and `m * m % c` on the drum's rings, both read from
+relations, and the number's state on ring `m` is read from its drum position. -/
+
+/-- Try rings `m, m + 1, ...`, at most `fuel` of them, against the number given by `states`
+on `rings` with drum position `ds`: `true` when `m` reaches the number or `m * m` passes
+it, `false` when the number is below `m` or stands at `0` on ring `m`; `none` when the fuel
+runs out or the states contradict each other. -/
+@[expose] public def primeOnAux (rings states : List Nat) (ds : List (Nat × Nat)) :
+    Nat → Nat → Option Bool
+  | 0, _ => none
+  | fuel + 1, m =>
+    match compareOn rings (rings.map (relation m)) states with
+    | some .eq => some true
+    | some .gt => some false
+    | some .lt =>
+      match compareOn rings (rings.map fun c => relation m c * relation m c % c) states with
+      | some .gt => some true
+      | some _ =>
+        if positionOn ds m = 0 then some false else primeOnAux rings states ds fuel (m + 1)
+      | none => none
+    | none => none
+
+/-- Whether the number given by `states` on `rings` is prime, trying at most `fuel` rings
+from `2` on. -/
+@[expose] public def primeOn (fuel : Nat) (rings states : List Nat) : Option Bool :=
+  match digitsOf rings states with
+  | some ds => primeOnAux rings states ds fuel 2
+  | none => none
+
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
 example : relation 17 5 = 2 := by decide
@@ -232,5 +264,19 @@ example : comparePacked ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1],
 set_option maxRecDepth 20000 in
 example : comparePacked ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
     ⟨[[2, 3, 4], [5]], [[0, 1, 0], [0]], [[7], [9]], [[1], [1]]⟩ = some .eq := by decide
+
+example : primeOn 20 [4, 3, 5, 7] [1, 1, 2, 6] = some true := by decide
+example : primeOn 20 [4, 3, 5, 7] [3, 1, 1, 0] = some false := by decide
+example : primeOn 20 [4, 3, 5, 7] [1, 1, 1, 2] = some false := by decide
+example : primeOn 20 [4, 3, 5, 7] [1, 2, 3, 1] = some true := by decide
+example : primeOn 20 [4, 3, 5, 7] [2, 2, 2, 2] = some true := by decide
+example : primeOn 20 [4, 3, 5, 7] [1, 1, 1, 1] = some false := by decide
+example : primeOn 20 [4, 3, 5, 7] [0, 0, 0, 0] = some false := by decide
+example : primeOn 3 [4, 3, 5, 7] [1, 1, 2, 6] = none := by decide
+example : primeOn 20 [6, 4, 9, 5] [1, 1, 7, 4] = some false := by decide
+example : primeOn 20 [6, 4, 9, 5] [5, 1, 2, 3] = none := by decide
+set_option maxRecDepth 20000 in
+example : primeOn 200 [6, 4, 9, 5] [5, 1, 2, 3] = some true := by decide
+example : primeOn 20 [2, 4] [1, 2] = none := by decide
 
 end Irreducibility
