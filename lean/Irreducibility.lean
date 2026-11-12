@@ -7,6 +7,7 @@ public import Irreducibility.Drum
 public import Irreducibility.Bridge
 public import Irreducibility.Compare
 public import Irreducibility.Packs
+public import Irreducibility.Primality
 
 /-!
 # Irreducibility -- Lean 4 formalization

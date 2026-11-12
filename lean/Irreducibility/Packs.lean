@@ -36,10 +36,10 @@ theorem foldl_lcm_one_dvd_iff (l : List Nat) (M : Nat) :
     l.foldl Nat.lcm 1 ∣ M ↔ ∀ x ∈ l, x ∣ M := by
   simp [foldl_lcm_dvd_iff]
 
-theorem dvd_foldl_lcm {l : List Nat} {x : Nat} (hx : x ∈ l) : x ∣ l.foldl Nat.lcm 1 :=
+public theorem dvd_foldl_lcm {l : List Nat} {x : Nat} (hx : x ∈ l) : x ∣ l.foldl Nat.lcm 1 :=
   (foldl_lcm_one_dvd_iff l _).1 dvd_rfl x hx
 
-theorem foldl_lcm_pos {l : List Nat} (h : ∀ x ∈ l, 0 < x) : 0 < l.foldl Nat.lcm 1 := by
+public theorem foldl_lcm_pos {l : List Nat} (h : ∀ x ∈ l, 0 < x) : 0 < l.foldl Nat.lcm 1 := by
   suffices ∀ a, 0 < a → 0 < l.foldl Nat.lcm a from this 1 Nat.one_pos
   induction l with
   | nil => simp
