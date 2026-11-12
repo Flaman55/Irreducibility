@@ -5,6 +5,7 @@ public import Irreducibility.Ticking
 public import Irreducibility.Euclid
 public import Irreducibility.Drum
 public import Irreducibility.Bridge
+public import Irreducibility.Compare
 
 /-!
 # Irreducibility -- Lean 4 formalization
