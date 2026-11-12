@@ -66,6 +66,71 @@ level by level; the turn itself is never formed. -/
 /-- The consecutive rings `2, 3, ..., n - 1`. -/
 @[expose] public def ringsBelow (n : Nat) : List Nat := (List.range n).drop 2
 
+/-! ## Positions on a drum
+
+A drum position is a list of levels `(digit, size)`, lowest level first. -/
+
+/-- Where a drum position stands on ring `c`, read level by level from the top: each level
+contributes its digit plus its size's relation to `c` times what the levels above give. -/
+@[expose] public def positionOn : List (Nat × Nat) → Nat → Nat
+  | [], _ => 0
+  | (d, r) :: rest, c => (d + relation r c * positionOn rest c) % c
+
+/-- Where one whole turn of a drum with level sizes `radices` stands on ring `c`. -/
+@[expose] public def turnOn : List Nat → Nat → Nat
+  | [], c => 1 % c
+  | r :: rs, c => (relation r c * turnOn rs c) % c
+
+/-- Step `step` teeth at a time around ring `b` from `pos`, at most `fuel` more steps; the
+number of steps taken when the ring first stands at `1`. -/
+@[expose] public def inverseAux (step b : Nat) : Nat → Nat → Nat → Nat
+  | 0, _, _ => 0
+  | fuel + 1, t, pos =>
+    if (pos + step) % b = 1 then t + 1 else inverseAux step b fuel (t + 1) ((pos + step) % b)
+
+/-- The number of `a`-steps around ring `b` that land on `1`. -/
+@[expose] public def inverse (a b : Nat) : Nat :=
+  if b = 1 then 0 else inverseAux (relation a b) b b 0 0
+
+/-- The level ring `m` in state `s` adds on top of the drum position `acc`; `none` when the
+state contradicts the levels below. -/
+@[expose] public def digitStep (acc : List (Nat × Nat)) (m s : Nat) : Option (Nat × Nat) :=
+  let g := commonPartWithTurn (acc.map Prod.snd) m
+  let r := m / g
+  let y := (s + m - positionOn acc m) % m
+  if y % g = 0 then
+    some (if 1 < r then (y / g * inverse (turnOn (acc.map Prod.snd) m / g % r) r % r, r)
+      else (0, r))
+  else none
+
+/-- The drum position given by ring states, built ring by ring on top of `acc`. -/
+@[expose] public def digitsOfAux : List (Nat × Nat) → List Nat → List Nat →
+    Option (List (Nat × Nat))
+  | acc, m :: ms, s :: ss =>
+    match digitStep acc m s with
+    | none => none
+    | some dr => digitsOfAux (acc ++ [dr]) ms ss
+  | acc, _, _ => some acc
+
+/-- The drum position of rings `rings` in states `states`. -/
+@[expose] public def digitsOf (rings states : List Nat) : Option (List (Nat × Nat)) :=
+  digitsOfAux [] rings states
+
+/-- Compare two drum positions with the same level sizes, digit by digit from the top. -/
+@[expose] public def compareTop : List (Nat × Nat) → List (Nat × Nat) → Ordering
+  | (a, _) :: as, (b, _) :: bs =>
+    match compareTop as bs with
+    | .eq => compare a b
+    | o => o
+  | _, _ => .eq
+
+/-- Compare two sets of states on the same rings: build both drum positions, then compare
+from the top. -/
+@[expose] public def compareOn (rings xs ys : List Nat) : Option Ordering :=
+  match digitsOf rings xs, digitsOf rings ys with
+  | some dx, some dy => some (compareTop dx dy)
+  | _, _ => none
+
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
 example : relation 17 5 = 2 := by decide
@@ -73,5 +138,13 @@ example : commonPart 12 18 = 6 := by decide
 example : levels [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1] := by decide
 example : levels [6, 35] = [6, 35] := by decide
 example : levels [4, 4] = [4, 1] := by decide
+example : digitsOf [2, 3, 4, 5] [1, 1, 1, 2] = some [(1, 2), (0, 3), (0, 2), (3, 5)] := by
+  decide
+example : digitsOf [6, 4, 9] [4, 0, 1] = some [(4, 6), (0, 2), (2, 3)] := by decide
+example : digitsOf [4, 4, 6] [3, 3, 1] = some [(3, 4), (0, 1), (1, 3)] := by decide
+example : digitsOf [2, 4] [1, 2] = none := by decide
+example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [0, 2, 2, 3] = some .lt := by decide
+example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [1, 1, 1, 2] = some .eq := by decide
+example : compareOn [6, 4, 9] [4, 0, 1] [3, 3, 0] = some .gt := by decide
 
 end Irreducibility

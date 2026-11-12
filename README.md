@@ -24,6 +24,10 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | `levelSize before m` | the level ring `m` gets on top of the drum built from `before` |
 | `IrreducibleAfter before m` | ring `m` contributes its whole period: `levelSize before m = m` |
 | `ringsBelow n` | the consecutive rings `2, 3, ..., n - 1` |
+| `positionOn ds c` | where a drum position (levels `(digit, size)`) stands on ring `c`, read from the top |
+| `inverse a b` | the number of `a`-steps around ring `b` that land on `1` |
+| `digitsOf rings states` | the drum position given by ring states, built ring by ring; `none` for contradictory states |
+| `compareOn rings xs ys` | compare two sets of states on the same rings, digit by digit from the top |
 
 ## What is proved
 
@@ -33,6 +37,7 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | T2 Euclid | `Euclid.lean` | `commonPart a b = Nat.gcd a b` |
 | T3 Drum | `Drum.lean` | `commonPartWithTurn radices m = gcd (radices.prod) m`; the product of the level sizes of positive rings is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
 | T4 Consecutive rings | `Bridge.lean` | for `n ≥ 2`: `levelSize (ringsBelow n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (ringsBelow n) n ↔ Nat.Prime n`; `Real.log (levelSize (ringsBelow n) n) = Λ n` (von Mangoldt) |
+| T5 Compare | `Compare.lean` | for positive rings and states `n % m`: `digitsOf` returns the mixed-radix digits of `n` modulo the drum's turn, on the levels `levels rings`; `positionOn ds c = value ds % c`; for `n, n'` below the turn, `compareOn rings (states of n) (states of n') = some (compare n n')` |
 
 T3 holds for any list of positive rings, in any order. T4 is the special case of the
 consecutive rings `2, ..., n - 1`.
@@ -40,8 +45,10 @@ consecutive rings `2, ..., n - 1`.
 Each file also contains checks evaluated by the kernel (`decide`), e.g.
 `levels [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1]`.
 
-Planned: comparing two numbers held on a drum without forming their values, and a
-primality test on a drum without forming values.
+`value` appears only in statements; the mechanism never forms it.
+
+Planned: drums of packs and carrying a position onto another drum, and a primality test on
+a drum without forming values.
 
 ## Repository layout
 
@@ -54,6 +61,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Euclid.lean             T2
     Drum.lean               T3
     Bridge.lean             T4
+    Compare.lean            T5
 Latex/                      paper sources (in preparation)
 ```
 
