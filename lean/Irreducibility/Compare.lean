@@ -15,15 +15,10 @@ digit from the top.
 * `compareTop_eq`: comparing digits from the top orders positions as their values.
 * `compareOn_eq`: below the turn of the drum, `compareOn` decides `compare n n'`.
 
-`value` is used only in statements: it names the number a drum position stands for.
+`value ds` is the number the drum position `ds` stands for, below the turn of its levels.
 -/
 
 namespace Irreducibility
-
-/-- The number a drum position stands for (statements only; the mechanism never forms it). -/
-@[expose] public def value : List (Nat × Nat) → Nat
-  | [] => 0
-  | (d, r) :: rest => d + r * value rest
 
 public theorem value_append (ds : List (Nat × Nat)) (d r : Nat) :
     value (ds ++ [(d, r)]) = value ds + (ds.map Prod.snd).prod * d := by

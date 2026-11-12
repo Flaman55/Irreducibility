@@ -131,6 +131,73 @@ from the top. -/
   | some dx, some dy => some (compareTop dx dy)
   | _, _ => none
 
+/-! ## Packs
+
+A pack is a group of rings that acts as one ring: its period is the turn of the drum built
+from its members, and its state is the position on that turn. A number on a drum of packs is
+given by the member states of its packs and, for the number of whole turns of that drum, the
+member states of its rotation packs. -/
+
+/-- The position a drum position stands for on the turn of its levels, below that turn. -/
+@[expose] public def value : List (Nat × Nat) → Nat
+  | [] => 0
+  | (d, r) :: rest => d + r * value rest
+
+/-- A pack as one ring: the turn of the drum built from its members and the position on it;
+`none` for contradictory member states. -/
+@[expose] public def packRing (members states : List Nat) : Option (Nat × Nat) :=
+  match digitsOf members states with
+  | some ds => some (ds.foldr (fun p acc => p.2 * acc) 1, value ds)
+  | none => none
+
+/-- The pack rings and pack states of a drum of packs. -/
+@[expose] public def drumOfPacks : List (List Nat) → List (List Nat) →
+    Option (List Nat × List Nat)
+  | p :: ps, s :: ss =>
+    match packRing p s, drumOfPacks ps ss with
+    | some (c, x), some (cs, xs) => some (c :: cs, x :: xs)
+    | _, _ => none
+  | _, _ => some ([], [])
+
+/-- A number on a drum of packs: member states of `packs`, and member states of `rotPacks`
+for the number of whole turns of the drum of `packs`. -/
+public structure Packed where
+  packs : List (List Nat)
+  states : List (List Nat)
+  rotPacks : List (List Nat)
+  rotStates : List (List Nat)
+
+/-- Carry the drum position given by `states` on `rings` onto the rings `target`. -/
+@[expose] public def extend (rings states target : List Nat) : Option (List Nat) :=
+  match digitsOf rings states with
+  | some ds => some (target.map (positionOn ds))
+  | none => none
+
+/-- One drum of packs and rotation packs: a rotation pack `c` in state `k` stands at
+`k` turns of the drum of packs plus the position of that drum on `c`. -/
+@[expose] public def flatten (x : Packed) : Option (List Nat × List Nat) :=
+  match drumOfPacks x.packs x.states, drumOfPacks x.rotPacks x.rotStates with
+  | some (dr, ds), some (kr, ks) =>
+    match digitsOf dr ds with
+    | some dd => some (dr ++ kr, ds ++ (kr.zip ks).map fun (c, k) =>
+        (k * turnOn (dd.map Prod.snd) c + positionOn dd c) % c)
+    | none => none
+  | _, _ => none
+
+/-- The rings of `rx` followed by the rings of `ry` not among them. -/
+@[expose] public def union (rx ry : List Nat) : List Nat :=
+  rx ++ ry.filter fun c => !rx.contains c
+
+/-- Compare two numbers given on different drums of packs: flatten both, carry both onto
+the common rings, then compare from the top. -/
+@[expose] public def comparePacked (x y : Packed) : Option Ordering :=
+  match flatten x, flatten y with
+  | some (rx, sx), some (ry, sy) =>
+    match extend rx sx (union rx ry), extend ry sy (union rx ry) with
+    | some ex, some ey => compareOn (union rx ry) ex ey
+    | _, _ => none
+  | _, _ => none
+
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
 example : relation 17 5 = 2 := by decide
@@ -146,5 +213,24 @@ example : digitsOf [2, 4] [1, 2] = none := by decide
 example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [0, 2, 2, 3] = some .lt := by decide
 example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [1, 1, 1, 2] = some .eq := by decide
 example : compareOn [6, 4, 9] [4, 0, 1] [3, 3, 0] = some .gt := by decide
+
+example : packRing [2, 3, 4] [1, 2, 3] = some (12, 11) := by decide
+example : packRing [4, 6] [3, 1] = some (12, 7) := by decide
+example : packRing [2, 4] [1, 2] = none := by decide
+example : drumOfPacks [[2, 3], [4, 5]] [[1, 2], [3, 4]] = some ([6, 20], [5, 19]) := by decide
+example : extend [6, 20, 7, 8] [4, 0, 2, 4] [9, 5] = some [1, 0] := by decide
+example : flatten ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩ =
+    some ([6, 20, 56], [4, 0, 44]) := by decide
+example : flatten ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩ =
+    some ([12, 5, 7, 9], [5, 1, 3, 2]) := by decide
+set_option maxRecDepth 20000 in
+example : comparePacked ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
+    ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩ = some .lt := by decide
+set_option maxRecDepth 20000 in
+example : comparePacked ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩
+    ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩ = some .gt := by decide
+set_option maxRecDepth 20000 in
+example : comparePacked ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
+    ⟨[[2, 3, 4], [5]], [[0, 1, 0], [0]], [[7], [9]], [[1], [1]]⟩ = some .eq := by decide
 
 end Irreducibility
