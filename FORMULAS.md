@@ -28,8 +28,8 @@ $$\mathrm{relation}(a, b) = a \bmod b$$
 
 ## T1w Waves (`Waves.lean`)
 
-$$\mathrm{sech}\,x = \frac{1}{\cosh x}, \qquad
-C_{s,d}(t) = \sum_{i=-1}^{2} \mathrm{sech}\!\Big(s \big(t - d (\lfloor t/d \rfloor + i)\big)\Big)$$
+$$\mathrm{sech}(x) = \frac{1}{\cosh(x)}, \qquad
+C_{s,d}(t) = \sum_{i=-1}^{2} \mathrm{sech}\Big(s \big(t - d (\lfloor t/d \rfloor + i)\big)\Big)$$
 
 For sharpness $s \ge 3$, every ring $d \ge 1$ and every tick $t$:
 
@@ -60,12 +60,12 @@ $$\mathrm{turnOn}(R, c) = \textstyle\prod R \bmod c$$
 
 (`turnOn_eq`)
 
-$$\mathrm{commonPartWithTurn}(R, m) = \gcd\!\big(\textstyle\prod R,\, m\big)$$
+$$\mathrm{commonPartWithTurn}(R, m) = \gcd\big(\textstyle\prod R, m\big)$$
 
 (`commonPartWithTurn_eq`)
 
-$$\mathrm{levels}(R \mathbin{+\!\!+} [m]) = \mathrm{levels}(R) \mathbin{+\!\!+}
-\Big[\frac{m}{\gcd\!\big(\prod \mathrm{levels}(R),\, m\big)}\Big]$$
+$$\mathrm{levels}(R \mathbin{+\mkern-10mu+} [m]) = \mathrm{levels}(R) \mathbin{+\mkern-10mu+}
+\Big[\frac{m}{\gcd\big(\prod \mathrm{levels}(R), m\big)}\Big]$$
 
 (`levels_append`)
 
@@ -90,7 +90,7 @@ $$\mathrm{IrreducibleAfter}(B, m) \iff \gcd(W(B), m) = 1$$
 $\mathrm{ringsBelow}(n) = (2, 3, \dots, n - 1)$ (`mem_ringsBelow`). For $n \ge 2$:
 
 $$\mathrm{levelSize}(\mathrm{ringsBelow}(n), n) =
-\begin{cases} p & n = p^k,\ p \text{ prime},\ k \ge 1 \\ 1 & \text{otherwise} \end{cases}$$
+\begin{cases} p & n = p^k,\ p \text{ prime},\ k \ge 1 \cr 1 & \text{otherwise} \end{cases}$$
 
 (`levelSize_ringsBelow`)
 
@@ -241,6 +241,6 @@ $$\mathrm{addressR}(R, [x]_R, T) = \big(i,\ [k]_{R/T}\big)$$
 
 Chapters: for any rings $R$, a prime $p$ with $p^v \mid W$ and $p^{v+1} \nmid W$, and every $j$:
 
-$$W\big(R \mathbin{+\!\!+} (p^{v+1}, p^{v+2}, \dots, p^{v+j})\big) = p^j \, W(R)$$
+$$W\big(R \mathbin{+\mkern-10mu+} (p^{v+1}, p^{v+2}, \dots, p^{v+j})\big) = p^j W(R)$$
 
 (`chapters_spec`)
