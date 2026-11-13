@@ -7,77 +7,78 @@ the Lean statement.
 ## Notation
 
 - $x \bmod 0 = x$ (the Lean convention); $\lfloor \cdot \rfloor$ is integer division.
-- A drum is a list of rings $R = (r_1, \dots, r_k)$. "Positive rings" means every $r_i \ge 1$.
-- The turn of $R$: $W(R) = \mathrm{lcm}(r_1, \dots, r_k)$, and $W = 1$ for the empty list.
-- The states of $x$ on $R$: $[x]_R = (x \bmod r_1, \dots, x \bmod r_k)$.
+- $R = (r_1, \dots, r_k)$ is a list of moduli. "Positive moduli" means every $r_i \ge 1$.
+- $W(R) = \mathrm{lcm}(r_1, \dots, r_k)$, and $W = 1$ for the empty list.
+- The residue vector of $x$ on $R$: $[x]_R = (x \bmod r_1, \dots, x \bmod r_k)$.
 - $\prod R = r_1 \cdots r_k$.
 - $(R, m_1, \dots, m_j)$ is the list $R$ followed by $m_1, \dots, m_j$.
-- A drum position is a list of levels $(d_1, s_1), \dots, (d_k, s_k)$ (digit, size).
+- A mixed-radix representation is a list $(d_1, s_1), \dots, (d_k, s_k)$ of pairs (digit,
+  radix), least significant first.
 - $\Lambda$ is the von Mangoldt function.
 
-## T1 Ticking (`Ticking.lean`)
+## T1 Residues (`Residues.lean`)
 
-For every $d$ and $t$, ring $d = 0$ included:
+For every $d$ and $t$, $d = 0$ included:
 
-$$\mathrm{pos}(d, t) = t \bmod d$$
+$$\mathrm{countMod}(d, t) = t \bmod d$$
 
-(`pos_eq_mod`)
+(`countMod_eq_mod`)
 
-$$\mathrm{relation}(a, b) = a \bmod b$$
+$$\mathrm{resid}(a, b) = a \bmod b$$
 
-(`relation_eq_mod`)
+(`resid_eq_mod`)
 
-## T1w Waves (`Waves.lean`)
+## T1w Sech comb (`Waves.lean`)
 
 $$\mathrm{sech}(x) = \frac{1}{\cosh(x)}, \qquad
 C_{s,d}(t) = \sum_{i=-1}^{2} \mathrm{sech}\Big(s \big(t - d (\lfloor t/d \rfloor + i)\big)\Big)$$
 
-For sharpness $s \ge 3$, every ring $d \ge 1$ and every tick $t$:
+For scale $s \ge 3$, every modulus $d \ge 1$ and every $t$:
 
 $$C_{s,d}(t) > \tfrac{1}{2} \iff d \mid t$$
 
-(`one_half_lt_comb_iff`)
+(`one_half_lt_sechComb_iff`)
 
-Hence the last peak of ring $d$ up to $t$ is $d \lfloor t/d \rfloor$, and for $b \ge 1$:
+Hence the last peak for $d$ up to $t$ is $d \lfloor t/d \rfloor$, and for $b \ge 1$:
 
-$$\mathrm{waveRelation}_s(a, b) = a - b \lfloor a/b \rfloor = \mathrm{relation}(a, b)$$
+$$\mathrm{waveResid}_s(a, b) = a - b \lfloor a/b \rfloor = \mathrm{resid}(a, b)$$
 
-(`waveRelation_eq`)
+(`waveResid_eq`)
 
-At $s = 2$ the reading fails: $\mathrm{waveRelation}_2(3, 2) = 0 \ne 1 = \mathrm{relation}(3, 2)$
-(`waveRelation_two_ne`).
+At $s = 2$ the reading fails: $\mathrm{waveResid}_2(3, 2) = 0 \ne 1 = \mathrm{resid}(3, 2)$
+(`waveResid_two_ne`).
 
 ## T2 Euclid (`Euclid.lean`)
 
-$$\mathrm{commonPart}(a, b) = \gcd(a, b)$$
+$$\mathrm{euclid}(a, b) = \gcd(a, b)$$
 
-(`commonPart_eq_gcd`)
+(`euclid_eq_gcd`)
 
-## T3 Drum (`Drum.lean`)
+## T3 Radices (`Radices.lean`)
 
 For any list $R$ and any $c, m$:
 
-$$\mathrm{turnOn}(R, c) = \textstyle\prod R \bmod c$$
+$$\mathrm{prodMod}(R, c) = \textstyle\prod R \bmod c$$
 
-(`turnOn_eq`)
+(`prodMod_eq`)
 
-$$\mathrm{commonPartWithTurn}(R, m) = \gcd\big(\textstyle\prod R, m\big)$$
+$$\mathrm{gcdProd}(R, m) = \gcd\big(\textstyle\prod R, m\big)$$
 
-(`commonPartWithTurn_eq`)
+(`gcdProd_eq`)
 
-$$\mathrm{levels}(R, m) = \Big(\mathrm{levels}(R),\ \frac{m}{\gcd\big(\prod \mathrm{levels}(R), m\big)}\Big)$$
+$$\mathrm{radices}(R, m) = \Big(\mathrm{radices}(R),\ \frac{m}{\gcd\big(\prod \mathrm{radices}(R), m\big)}\Big)$$
 
-(`levels_append`)
+(`radices_append`)
 
-For positive rings $R$ and a list $B$ of positive rings:
+For positive moduli $R$ and a list $B$ of positive moduli:
 
-$$\textstyle\prod \mathrm{levels}(R) = W(R)$$
+$$\textstyle\prod \mathrm{radices}(R) = W(R)$$
 
-(`prod_levels`)
+(`prod_radices`)
 
-$$\mathrm{levelSize}(B, m) = \frac{m}{\gcd(W(B), m)}$$
+$$\mathrm{newRadix}(B, m) = \frac{m}{\gcd(W(B), m)}$$
 
-(`levelSize_eq`)
+(`newRadix_eq`)
 
 and for $m \ge 1$:
 
@@ -85,162 +86,163 @@ $$\mathrm{IrreducibleAfter}(B, m) \iff \gcd(W(B), m) = 1$$
 
 (`irreducibleAfter_iff`)
 
-## T4 Consecutive rings (`Bridge.lean`)
+## T4 Consecutive moduli (`InitialModuli.lean`)
 
-$\mathrm{ringsBelow}(n) = (2, 3, \dots, n - 1)$ (`mem_ringsBelow`). For $n \ge 2$:
+$\mathrm{initialModuli}(n) = (2, 3, \dots, n - 1)$ (`mem_initialModuli`). For $n \ge 2$:
 
-$$\mathrm{levelSize}(\mathrm{ringsBelow}(n), n) =
+$$\mathrm{newRadix}(\mathrm{initialModuli}(n), n) =
 \begin{cases} p & n = p^k,\ p \text{ prime},\ k \ge 1 \cr 1 & \text{otherwise} \end{cases}$$
 
-(`levelSize_ringsBelow`)
+(`newRadix_initialModuli`)
 
-$$\mathrm{IrreducibleAfter}(\mathrm{ringsBelow}(n), n) \iff n \text{ is prime}$$
+$$\mathrm{IrreducibleAfter}(\mathrm{initialModuli}(n), n) \iff n \text{ is prime}$$
 
-(`irreducibleAfter_ringsBelow_iff`)
+(`irreducibleAfter_initialModuli_iff`)
 
-$$\log \mathrm{levelSize}(\mathrm{ringsBelow}(n), n) = \Lambda(n)$$
+$$\log \mathrm{newRadix}(\mathrm{initialModuli}(n), n) = \Lambda(n)$$
 
-(`log_levelSize_ringsBelow`)
+(`log_newRadix_initialModuli`)
 
 ## T5 Compare (`Compare.lean`)
 
-The value of a drum position, read in mixed radix from the bottom level:
+The value of a mixed-radix representation:
 
-$$\mathrm{value}\big((d_1, s_1), \dots, (d_k, s_k)\big) = \sum_{i=1}^{k} d_i \prod_{j < i} s_j$$
+$$\mathrm{eval}\big((d_1, s_1), \dots, (d_k, s_k)\big) = \sum_{i=1}^{k} d_i \prod_{j < i} s_j$$
 
-(`value_append`)
+(`eval_append`)
 
-$$\mathrm{positionOn}(D, c) = \mathrm{value}(D) \bmod c$$
+$$\mathrm{evalMod}(D, c) = \mathrm{eval}(D) \bmod c$$
 
-(`positionOn_eq`)
+(`evalMod_eq`)
 
 For $b > 1$ and $\gcd(a, b) = 1$:
 
-$$a \cdot \mathrm{inverse}(a, b) \equiv 1 \pmod b$$
+$$a \cdot \mathrm{invMod}(a, b) \equiv 1 \pmod b$$
 
-(`inverse_spec`)
+(`invMod_spec`)
 
-For positive rings $R$ and every $n$ there is a drum position $D = (d_i, s_i)_i$ with
+For positive moduli $R$ and every $n$ there is a mixed-radix representation
+$D = (d_i, s_i)_i$ with
 
-$$\mathrm{digitsOf}(R, [n]_R) = D, \quad (s_i)_i = \mathrm{levels}(R), \quad d_i < s_i, \quad
-\mathrm{value}(D) = n \bmod W(R)$$
+$$\mathrm{toMixedRadix}(R, [n]_R) = D, \quad (s_i)_i = \mathrm{radices}(R), \quad d_i < s_i, \quad
+\mathrm{eval}(D) = n \bmod W(R)$$
 
-(`digitsOf_spec`)
+(`toMixedRadix_spec`)
 
-For positive rings $R$ and $n, n' < W(R)$:
+For positive moduli $R$ and $n, n' < W(R)$:
 
-$$\mathrm{compareOn}(R, [n]_R, [n']_R) = \mathrm{compare}(n, n')$$
+$$\mathrm{compareRes}(R, [n]_R, [n']_R) = \mathrm{compare}(n, n')$$
 
-(`compareOn_eq`)
+(`compareRes_eq`)
 
-## T5c Packs (`Packs.lean`)
+## T5c Blocks (`Blocks.lean`)
 
-For positive rings $M$ (the members of a pack):
+For positive moduli $M$ (the members of a block):
 
-$$\mathrm{packRing}(M, [n]_M) = \big(W(M),\ n \bmod W(M)\big)$$
+$$\mathrm{blockModulus}(M, [n]_M) = \big(W(M),\ n \bmod W(M)\big)$$
 
-(`packRing_spec`)
+(`blockModulus_spec`)
 
-and for packs $P_1, \dots, P_k$ of positive rings, the drum of packs is the drum of rings
-$W(P_1), \dots, W(P_k)$ in states $n \bmod W(P_i)$ (`drumOfPacks_spec`).
+and for blocks $P_1, \dots, P_k$ of positive moduli, the block moduli are
+$W(P_1), \dots, W(P_k)$ with residues $n \bmod W(P_i)$ (`blockModuli_spec`).
 
-For positive rings $R$, any rings $T$ and $n < W(R)$:
+For positive moduli $R$, any moduli $T$ and $n < W(R)$:
 
-$$\mathrm{extend}(R, [n]_R, T) = [n]_T$$
+$$\mathrm{baseExtend}(R, [n]_R, T) = [n]_T$$
 
-(`extend_spec`)
+(`baseExtend_spec`)
 
-For packs $D_1, \dots, D_a$ and rotation packs $K_1, \dots, K_b$ of positive rings, with
+For blocks $D_1, \dots, D_a$ and quotient blocks $K_1, \dots, K_b$ of positive moduli, with
 $Q = \big(W(D_1), \dots, W(D_a), W(K_1), \dots, W(K_b)\big)$:
 
-$$\mathrm{flatten}(\mathrm{Packed.of}(n, D, K)) = (Q, [n]_Q)$$
+$$\mathrm{flatten}(\mathrm{BlockRep.of}(n, D, K)) = (Q, [n]_Q)$$
 
 (`flatten_spec`)
 
-If moreover $n$ is below the lcm of all rings of $D, K$ and $n'$ below the lcm of all rings of
+If moreover $n$ is below the lcm of all moduli of $D, K$ and $n'$ below the lcm of all moduli of
 $D', K'$:
 
-$$\mathrm{comparePacked}\big(\mathrm{Packed.of}(n, D, K),\ \mathrm{Packed.of}(n', D', K')\big)
+$$\mathrm{compareBlocks}\big(\mathrm{BlockRep.of}(n, D, K),\ \mathrm{BlockRep.of}(n', D', K')\big)
 = \mathrm{compare}(n, n')$$
 
-(`comparePacked_eq`)
+(`compareBlocks_eq`)
 
 ## T6 Primality (`Primality.lean`)
 
-For positive rings $R$ with $n < W(R)$ and $2 < W(R)$: every answer $b$ of
-$\mathrm{primeOn}(\mathrm{fuel}, R, [n]_R)$ is true exactly when $n$ is prime (`primeOn_sound`),
+For positive moduli $R$ with $n < W(R)$ and $2 < W(R)$: every answer $b$ of
+$\mathrm{isPrimeRes}(\mathrm{fuel}, R, [n]_R)$ is true exactly when $n$ is prime (`isPrimeRes_sound`),
 and an answer is given once
 
 $$\mathrm{fuel} > n \quad\text{or}\quad
 \Big(\mathrm{fuel} > \lfloor\sqrt n\rfloor \ \text{and}\ \big(\lfloor\sqrt n\rfloor + 1\big)^2 < W(R)\Big)$$
 
-(`primeOn_eq`)
+(`isPrimeRes_eq`)
 
-## T7 Window atoms (`Atoms.lean`)
+## T7 Interval atoms (`Atoms.lean`)
 
 For $k \ge 1$, $\mathrm{firstMultipleFrom}(lo, k)$ is the least multiple of $k$ that is
 $\ge lo$, and it lies in $[lo, lo + k)$ (`firstMultipleFrom_spec`).
 
-$$k \in \mathrm{windowAtoms}(lo, hi) \iff k \text{ is prime} \ \wedge\
+$$k \in \mathrm{intervalAtoms}(lo, hi) \iff k \text{ is prime} \ \wedge\
 \exists a:\ lo \le a,\ k \mid a,\ a + k \le hi$$
 
-(`mem_windowAtoms`)
+(`mem_intervalAtoms`)
 
-So every atom is prime (`prime_of_mem_windowAtoms`), and for a prime $p$:
+So every atom is prime (`prime_of_mem_intervalAtoms`), and for a prime $p$:
 
-$$lo + 2p \le hi + 1 \implies p \in \mathrm{windowAtoms}(lo, hi)$$
+$$lo + 2p \le hi + 1 \implies p \in \mathrm{intervalAtoms}(lo, hi)$$
 
-(`prime_mem_windowAtoms`)
+(`prime_mem_intervalAtoms`)
 
 ## T8 Arithmetic (`Arithmetic.lean`)
 
-Write $W = W(R)$. For any rings $R$ and all $x, y, e$:
+Write $W = W(R)$. For any moduli $R$ and all $x, y, e$:
 
-$$\mathrm{addOn}(R, [x]_R, [y]_R) = [x + y]_R, \quad
-\mathrm{mulOn}(R, [x]_R, [y]_R) = [x y]_R, \quad
-\mathrm{powOn}(R, [x]_R, e) = [x^e]_R$$
+$$\mathrm{addRes}(R, [x]_R, [y]_R) = [x + y]_R, \quad
+\mathrm{mulRes}(R, [x]_R, [y]_R) = [x y]_R, \quad
+\mathrm{powRes}(R, [x]_R, e) = [x^e]_R$$
 
-(`addOn_spec`, `mulOn_spec`, `powOn_spec`). From here on $R$ is a list of positive rings.
+(`addRes_spec`, `mulRes_spec`, `powRes_spec`). From here on $R$ is a list of positive moduli.
 
-$$y \le x \implies \mathrm{subOn}(R, [x]_R, [y]_R) = [x - y]_R$$
+$$y \le x \implies \mathrm{subRes}(R, [x]_R, [y]_R) = [x - y]_R$$
 
-(`subOn_spec_of_le`)
+(`subRes_spec_of_le`)
 
-$$y \le W \implies \mathrm{subOn}(R, [x]_R, [y]_R) = [x + (W - y)]_R$$
+$$y \le W \implies \mathrm{subRes}(R, [x]_R, [y]_R) = [x + (W - y)]_R$$
 
-(`subOn_spec`)
+(`subRes_spec`)
 
 For $x, y < W$:
 
-$$\mathrm{addWraps}(R, [x]_R, [y]_R) \iff W \le x + y, \qquad
-\mathrm{subWraps}(R, [x]_R, [y]_R) \iff x < y$$
+$$\mathrm{addOverflow}(R, [x]_R, [y]_R) \iff W \le x + y, \qquad
+\mathrm{subUnderflow}(R, [x]_R, [y]_R) \iff x < y$$
 
-(`addWraps_iff`, `subWraps_iff`). Exact division: for $t \ge 1$ with $t \mid x$, and
-$R/t = \big(r_i / \gcd(r_i, t)\big)_i$ (`exactDivRings`):
+(`addOverflow_iff`, `subUnderflow_iff`). Exact division: for $t \ge 1$ with $t \mid x$, and
+$R/t = \big(r_i / \gcd(r_i, t)\big)_i$ (`divModuli`):
 
-$$\mathrm{exactDivOn}(R, [x]_R, t) = [x / t]_{R/t}$$
+$$\mathrm{exactDivRes}(R, [x]_R, t) = [x / t]_{R/t}$$
 
-(`exactDivOn_spec`)
+(`exactDivRes_spec`)
 
 $$x < W \implies x / t < W(R/t)$$
 
-(`div_lt_exactDivRings`)
+(`div_lt_divModuli`)
 
 For $T \ge 1$ and $x < W$:
 
-$$\mathrm{modR}(R, [x]_R, T) = \big(x \bmod T,\ [\lfloor x / T \rfloor]_{R/T}\big)$$
+$$\mathrm{divModRes}(R, [x]_R, T) = \big(x \bmod T,\ [\lfloor x / T \rfloor]_{R/T}\big)$$
 
-(`modR_spec`)
+(`divModRes_spec`)
 
 and for $0 < x < W$, with $i = (x - 1) \bmod T + 1$ and $k = \lfloor (x - 1)/T \rfloor + 1$,
 so that $x = T (k - 1) + i$ and $1 \le i \le T$:
 
-$$\mathrm{addressR}(R, [x]_R, T) = \big(i,\ [k]_{R/T}\big)$$
+$$\mathrm{addressRes}(R, [x]_R, T) = \big(i,\ [k]_{R/T}\big)$$
 
-(`addressR_spec`)
+(`addressRes_spec`)
 
-Chapters: for any rings $R$, a prime $p$ with $p^v \mid W$ and $p^{v+1} \nmid W$, and every $j$:
+Appending prime powers: for any moduli $R$, a prime $p$ with $p^v \mid W$ and $p^{v+1} \nmid W$, and every $j$:
 
 $$W\big(R, p^{v+1}, p^{v+2}, \dots, p^{v+j}\big) = p^j W(R)$$
 
-(`chapters_spec`)
+(`lcm_append_prime_powers`)

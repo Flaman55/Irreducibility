@@ -1,55 +1,57 @@
 module
 
 public import Mathlib
-public import Irreducibility.Drum
+public import Irreducibility.Radices
 
 /-!
-# T5: comparing on a drum without forming values
+# T5: comparison on residues without assembling the number
 
-`digitsOf rings states` builds a drum position from ring states using relations, Euclid's
-procedure and stepping around rings only. `compareOn` compares two such positions digit by
-digit from the top.
+`toMixedRadix moduli residues` computes a mixed-radix representation from residues using
+`resid`, Euclid's algorithm and modular inverses by repeated addition only. `compareRes`
+compares two such representations digit by digit from the most significant.
 
-* `digitsOf_spec`: for the states `n % m` of positive rings, `digitsOf` returns the
-  mixed-radix digits of `n % lcm rings` on the levels `levels rings`.
-* `compareTop_eq`: comparing digits from the top orders positions as their values.
-* `compareOn_eq`: below the turn of the drum, `compareOn` decides `compare n n'`.
+* `toMixedRadix_spec`: for the residues `n % m` of positive moduli, `toMixedRadix` returns the
+  mixed-radix digits of `n % lcm moduli` on the radices `radices moduli`.
+* `compareDigits_eq`: comparing digits from the most significant orders representations as
+  their values.
+* `compareRes_eq`: below the lcm of the moduli, `compareRes` decides `compare n n'`.
 
-`value ds` is the number the drum position `ds` stands for, below the turn of its levels.
+`eval ds` is the value of the mixed-radix representation `ds`, below the product of its
+radices.
 -/
 
 namespace Irreducibility
 
-public theorem value_append (ds : List (Nat × Nat)) (d r : Nat) :
-    value (ds ++ [(d, r)]) = value ds + (ds.map Prod.snd).prod * d := by
+public theorem eval_append (ds : List (Nat × Nat)) (d r : Nat) :
+    eval (ds ++ [(d, r)]) = eval ds + (ds.map Prod.snd).prod * d := by
   induction ds with
-  | nil => simp [value]
+  | nil => simp [eval]
   | cons p ds ih =>
     obtain ⟨a, b⟩ := p
-    simp only [List.cons_append, value, ih, List.map_cons, List.prod_cons]
+    simp only [List.cons_append, eval, ih, List.map_cons, List.prod_cons]
     ring
 
-/-- Reading a position on ring `c` gives its value modulo `c`. -/
-public theorem positionOn_eq (ds : List (Nat × Nat)) (c : Nat) :
-    positionOn ds c = value ds % c := by
+/-- `evalMod ds c` is the value of `ds` modulo `c`. -/
+public theorem evalMod_eq (ds : List (Nat × Nat)) (c : Nat) :
+    evalMod ds c = eval ds % c := by
   induction ds with
-  | nil => simp [positionOn, value]
+  | nil => simp [evalMod, eval]
   | cons p ds ih =>
     obtain ⟨d, r⟩ := p
-    simp only [positionOn, value, ih, relation_eq_mod]
+    simp only [evalMod, eval, ih, resid_eq_mod]
     rw [Nat.add_mod, Nat.mul_mod, Nat.mod_mod, Nat.mod_mod, ← Nat.mul_mod, ← Nat.add_mod]
 
-theorem inverseAux_spec (step b : Nat) :
-    ∀ fuel t pos, pos = t * step % b → (∃ x, t < x ∧ x ≤ t + fuel ∧ x * step % b = 1) →
-      inverseAux step b fuel t pos * step % b = 1
+theorem invModAux_spec (step b : Nat) :
+    ∀ fuel t cur, cur = t * step % b → (∃ x, t < x ∧ x ≤ t + fuel ∧ x * step % b = 1) →
+      invModAux step b fuel t cur * step % b = 1
   | 0, _, _, _, ⟨_, h1, h2, _⟩ => by omega
-  | fuel + 1, t, pos, hpos, ⟨x, h1, h2, hx⟩ => by
-    have hnext : (pos + step) % b = (t + 1) * step % b := by
-      rw [hpos, Nat.mod_add_mod, Nat.add_mul, Nat.one_mul]
-    simp only [inverseAux]
+  | fuel + 1, t, cur, hcur, ⟨x, h1, h2, hx⟩ => by
+    have hnext : (cur + step) % b = (t + 1) * step % b := by
+      rw [hcur, Nat.mod_add_mod, Nat.add_mul, Nat.one_mul]
+    simp only [invModAux]
     split_ifs with h
     · rw [← hnext]; exact h
-    · apply inverseAux_spec step b fuel (t + 1) _ hnext
+    · apply invModAux_spec step b fuel (t + 1) _ hnext
       refine ⟨x, ?_, by omega, hx⟩
       rcases Nat.lt_or_ge (t + 1) x with h' | h'
       · exact h'
@@ -58,9 +60,9 @@ theorem inverseAux_spec (step b : Nat) :
         rw [hnext, ← hx1] at h
         exact h hx
 
-/-- Stepping `a` teeth at a time around ring `b` finds the inverse of `a` modulo `b`. -/
-public theorem inverse_spec {a b : Nat} (hb : 1 < b) (h : Nat.Coprime a b) :
-    a * inverse a b % b = 1 := by
+/-- Repeated addition of `a` modulo `b` finds the inverse of `a` modulo `b`. -/
+public theorem invMod_spec {a b : Nat} (hb : 1 < b) (h : Nat.Coprime a b) :
+    a * invMod a b % b = 1 := by
   have hcop : Nat.Coprime (a % b) b := by
     rw [Nat.Coprime, ← Nat.gcd_rec, Nat.gcd_comm]; exact h
   obtain ⟨x, hxb, hx⟩ := Nat.exists_mul_mod_eq_one_of_coprime hcop hb
@@ -68,9 +70,9 @@ public theorem inverse_spec {a b : Nat} (hb : 1 < b) (h : Nat.Coprime a b) :
     rcases Nat.eq_zero_or_pos x with h0 | h0
     · rw [h0] at hx; simp at hx
     · exact h0
-  have hspec := inverseAux_spec (a % b) b b 0 0 (by simp)
+  have hspec := invModAux_spec (a % b) b b 0 0 (by simp)
     ⟨x, hx0, by omega, by rw [Nat.mul_comm]; exact hx⟩
-  simp only [inverse, Nat.ne_of_gt hb, ↓reduceIte, relation_eq_mod]
+  simp only [invMod, Nat.ne_of_gt hb, ↓reduceIte, resid_eq_mod]
   rw [← Nat.mod_mul_mod, Nat.mul_comm]; exact hspec
 
 theorem digit_solve {L1 r q y1 inv k : Nat} (hr : 1 < r) (hq : q < r)
@@ -92,14 +94,15 @@ theorem digit_solve {L1 r q y1 inv k : Nat} (hr : 1 < r) (hq : q < r)
   rw [ZMod.natCast_eq_natCast_iff', Nat.mod_eq_of_lt hq] at h3
   exact h3
 
-/-- The arithmetic of one level: the drum below has turn `L`, ring `m` is added. -/
+/-- The arithmetic of one Garner step: the radices before have product `L`, modulus `m` is
+appended. -/
 theorem digit_arith {n m L : Nat} (hm : 0 < m) (hL : 0 < L) :
     let g := Nat.gcd L m
     let r := m / g
     let q := n % (L * r) / L
     let y := (n % m + m - n % L % m) % m
     y % g = 0 ∧ q < r ∧ (r ≤ 1 → q = 0) ∧
-      (1 < r → y / g * inverse (L % m / g % r) r % r = q) ∧ n % L + L * q = n % (L * r) := by
+      (1 < r → y / g * invMod (L % m / g % r) r % r = q) ∧ n % L + L * q = n % (L * r) := by
   intro g r q y
   have hg : 0 < g := Nat.gcd_pos_of_pos_right _ hm
   have hgm : g ∣ m := Nat.gcd_dvd_right L m
@@ -162,15 +165,15 @@ theorem digit_arith {n m L : Nat} (hm : 0 < m) (hL : 0 < L) :
     have htr : t1 % r = L1 % r := by rw [← htj, Nat.add_mul_mod_self_left]
     have hcop : Nat.Coprime (t1 % r) r := by
       rw [htr, Nat.Coprime, ← Nat.gcd_rec, Nat.gcd_comm]; exact hcopL
-    have hinv := inverse_spec h1r hcop
+    have hinv := invMod_spec h1r hcop
     rw [htr] at hinv
     rw [hydiv, htdiv, htr]
     exact digit_solve h1r hq hyk hinv
 
-/-- `n` fits the drum position `ds`: digits below their level sizes, and `ds` stands for `n`
-modulo the turn of its levels. -/
+/-- `n` fits the mixed-radix representation `ds`: digits below their radices, and the value
+of `ds` is `n` modulo the product of the radices. -/
 @[expose] public def Fits (n : Nat) (ds : List (Nat × Nat)) : Prop :=
-  (∀ p ∈ ds, p.1 < p.2) ∧ value ds = n % (ds.map Prod.snd).prod
+  (∀ p ∈ ds, p.1 < p.2) ∧ eval ds = n % (ds.map Prod.snd).prod
 
 theorem prod_pos_of_fits {ds : List (Nat × Nat)} (h : ∀ p ∈ ds, p.1 < p.2) :
     0 < (ds.map Prod.snd).prod :=
@@ -179,14 +182,14 @@ theorem prod_pos_of_fits {ds : List (Nat × Nat)} (h : ∀ p ∈ ds, p.1 < p.2) 
     exact Nat.lt_of_le_of_lt (Nat.zero_le _) (h p hp))
 
 theorem digitStep_spec {n m : Nat} {acc : List (Nat × Nat)} (hm : 0 < m) (hacc : Fits n acc) :
-    ∃ d, digitStep acc m (n % m) = some (d, m / commonPartWithTurn (acc.map Prod.snd) m) ∧
-      Fits n (acc ++ [(d, m / commonPartWithTurn (acc.map Prod.snd) m)]) := by
+    ∃ d, digitStep acc m (n % m) = some (d, m / gcdProd (acc.map Prod.snd) m) ∧
+      Fits n (acc ++ [(d, m / gcdProd (acc.map Prod.snd) m)]) := by
   obtain ⟨hlt, hval⟩ := hacc
   have hL := prod_pos_of_fits hlt
   obtain ⟨hyg, hq, hq0, hdig, hsum⟩ := digit_arith (n := n) hm hL
   refine ⟨n % ((acc.map Prod.snd).prod * (m / Nat.gcd (acc.map Prod.snd).prod m)) /
     (acc.map Prod.snd).prod, ?_, ?_, ?_⟩
-  · simp only [digitStep, commonPartWithTurn_eq, positionOn_eq, turnOn_eq, hval]
+  · simp only [digitStep, gcdProd_eq, evalMod_eq, prodMod_eq, hval]
     simp only [hyg, ↓reduceIte]
     split_ifs with h1r
     · rw [hdig h1r]
@@ -195,48 +198,48 @@ theorem digitStep_spec {n m : Nat} {acc : List (Nat × Nat)} (hm : 0 < m) (hacc 
     rcases List.mem_append.1 hp with hp | hp
     · exact hlt p hp
     · rw [List.mem_singleton] at hp
-      rw [hp, commonPartWithTurn_eq]
+      rw [hp, gcdProd_eq]
       exact hq
-  · rw [value_append, hval, commonPartWithTurn_eq]
+  · rw [eval_append, hval, gcdProd_eq]
     simp only [List.map_append, List.map_cons, List.map_nil, List.prod_append, List.prod_cons,
       List.prod_nil, Nat.mul_one]
     exact hsum
 
-theorem digitsOfAux_spec (n : Nat) :
+theorem toMixedRadixAux_spec (n : Nat) :
     ∀ (ms : List Nat) (acc : List (Nat × Nat)), (∀ x ∈ ms, 0 < x) → Fits n acc →
-      ∃ ds, digitsOfAux acc ms (ms.map (n % ·)) = some ds ∧ Fits n ds ∧
+      ∃ ds, toMixedRadixAux acc ms (ms.map (n % ·)) = some ds ∧ Fits n ds ∧
         ds.map Prod.snd =
-          ms.foldl (fun rs m => rs ++ [m / commonPartWithTurn rs m]) (acc.map Prod.snd)
-  | [], acc, _, hacc => ⟨acc, by simp [digitsOfAux], hacc, by simp⟩
+          ms.foldl (fun rs m => rs ++ [m / gcdProd rs m]) (acc.map Prod.snd)
+  | [], acc, _, hacc => ⟨acc, by simp [toMixedRadixAux], hacc, by simp⟩
   | m :: ms, acc, hpos, hacc => by
     obtain ⟨d, hstep, hfits⟩ := digitStep_spec (hpos m (by simp)) hacc
     obtain ⟨ds, hds, hfds, hrad⟩ :=
-      digitsOfAux_spec n ms _ (fun x hx => hpos x (by simp [hx])) hfits
+      toMixedRadixAux_spec n ms _ (fun x hx => hpos x (by simp [hx])) hfits
     refine ⟨ds, ?_, hfds, ?_⟩
-    · simp only [List.map_cons, digitsOfAux, hstep]
+    · simp only [List.map_cons, toMixedRadixAux, hstep]
       exact hds
     · rw [hrad]
       simp
 
-/-- For the states `n % m` of positive rings, `digitsOf` returns the mixed-radix digits of
-`n` modulo the turn of the drum, on the levels `levels rings`. -/
-public theorem digitsOf_spec (n : Nat) (rings : List Nat) (h : ∀ x ∈ rings, 0 < x) :
-    ∃ ds, digitsOf rings (rings.map (n % ·)) = some ds ∧ ds.map Prod.snd = levels rings ∧
-      (∀ p ∈ ds, p.1 < p.2) ∧ value ds = n % rings.foldl Nat.lcm 1 := by
-  obtain ⟨ds, hds, ⟨hlt, hval⟩, hrad⟩ := digitsOfAux_spec n rings [] h ⟨by simp, by simp [value, Nat.mod_one]⟩
+/-- For the residues `n % m` of positive moduli, `toMixedRadix` returns the mixed-radix digits
+of `n` modulo the lcm of the moduli, on the radices `radices moduli`. -/
+public theorem toMixedRadix_spec (n : Nat) (moduli : List Nat) (h : ∀ x ∈ moduli, 0 < x) :
+    ∃ ds, toMixedRadix moduli (moduli.map (n % ·)) = some ds ∧ ds.map Prod.snd = radices moduli ∧
+      (∀ p ∈ ds, p.1 < p.2) ∧ eval ds = n % moduli.foldl Nat.lcm 1 := by
+  obtain ⟨ds, hds, ⟨hlt, hval⟩, hrad⟩ := toMixedRadixAux_spec n moduli [] h ⟨by simp, by simp [eval, Nat.mod_one]⟩
   refine ⟨ds, hds, hrad, hlt, ?_⟩
   rw [hval, hrad]
   simp only [List.map_nil]
-  rw [show rings.foldl (fun rs m => rs ++ [m / commonPartWithTurn rs m]) [] = levels rings
-    from rfl, prod_levels _ h]
+  rw [show moduli.foldl (fun rs m => rs ++ [m / gcdProd rs m]) [] = radices moduli
+    from rfl, prod_radices _ h]
 
-/-- Comparing digits from the top orders drum positions with the same levels as their
-values. -/
-public theorem compareTop_eq :
+/-- Comparing digits from the most significant orders mixed-radix representations with the
+same radices as their values. -/
+public theorem compareDigits_eq :
     ∀ (ds es : List (Nat × Nat)), ds.map Prod.snd = es.map Prod.snd →
       (∀ p ∈ ds, p.1 < p.2) → (∀ p ∈ es, p.1 < p.2) →
-        compareTop ds es = compare (value ds) (value es)
-  | [], [], _, _, _ => by simp [compareTop, value]
+        compareDigits ds es = compare (eval ds) (eval es)
+  | [], [], _, _, _ => by simp [compareDigits, eval]
   | [], _ :: _, h, _, _ => by simp at h
   | _ :: _, [], h, _, _ => by simp at h
   | (a, r) :: ds, (b, r') :: es, h, hd, he => by
@@ -245,10 +248,10 @@ public theorem compareTop_eq :
     subst hr
     have ha : a < r := hd (a, r) (by simp)
     have hb : b < r := he (b, r) (by simp)
-    have ih := compareTop_eq ds es h (fun p hp => hd p (by simp [hp]))
+    have ih := compareDigits_eq ds es h (fun p hp => hd p (by simp [hp]))
       (fun p hp => he p (by simp [hp]))
-    simp only [compareTop, value, ih]
-    rcases Nat.lt_trichotomy (value ds) (value es) with hv | hv | hv
+    simp only [compareDigits, eval, ih]
+    rcases Nat.lt_trichotomy (eval ds) (eval es) with hv | hv | hv
     · rw [Nat.compare_eq_lt.2 hv]
       refine (Nat.compare_eq_lt.2 ?_).symm
       nlinarith
@@ -261,16 +264,16 @@ public theorem compareTop_eq :
       refine (Nat.compare_eq_gt.2 ?_).symm
       nlinarith
 
-/-- Below the turn of a drum of positive rings, comparing ring states digit by digit from
-the top decides `compare n n'`. -/
-public theorem compareOn_eq (rings : List Nat) (h : ∀ x ∈ rings, 0 < x) {n n' : Nat}
-    (hn : n < rings.foldl Nat.lcm 1) (hn' : n' < rings.foldl Nat.lcm 1) :
-    compareOn rings (rings.map (n % ·)) (rings.map (n' % ·)) = some (compare n n') := by
-  obtain ⟨ds, hds, hrd, hld, hvd⟩ := digitsOf_spec n rings h
-  obtain ⟨es, hes, hre, hle, hve⟩ := digitsOf_spec n' rings h
+/-- Below the lcm of positive moduli, comparing residue vectors digit by digit from the most
+significant decides `compare n n'`. -/
+public theorem compareRes_eq (moduli : List Nat) (h : ∀ x ∈ moduli, 0 < x) {n n' : Nat}
+    (hn : n < moduli.foldl Nat.lcm 1) (hn' : n' < moduli.foldl Nat.lcm 1) :
+    compareRes moduli (moduli.map (n % ·)) (moduli.map (n' % ·)) = some (compare n n') := by
+  obtain ⟨ds, hds, hrd, hld, hvd⟩ := toMixedRadix_spec n moduli h
+  obtain ⟨es, hes, hre, hle, hve⟩ := toMixedRadix_spec n' moduli h
   rw [Nat.mod_eq_of_lt hn] at hvd
   rw [Nat.mod_eq_of_lt hn'] at hve
-  simp only [compareOn, hds, hes]
-  rw [compareTop_eq ds es (hrd.trans hre.symm) hld hle, hvd, hve]
+  simp only [compareRes, hds, hes]
+  rw [compareDigits_eq ds es (hrd.trans hre.symm) hld hle, hvd, hve]
 
 end Irreducibility

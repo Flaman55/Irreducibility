@@ -1,13 +1,13 @@
 module
 
 public import Irreducibility.Defs
-public import Irreducibility.Ticking
+public import Irreducibility.Residues
 public import Irreducibility.Waves
 public import Irreducibility.Euclid
-public import Irreducibility.Drum
-public import Irreducibility.Bridge
+public import Irreducibility.Radices
+public import Irreducibility.InitialModuli
 public import Irreducibility.Compare
-public import Irreducibility.Packs
+public import Irreducibility.Blocks
 public import Irreducibility.Primality
 public import Irreducibility.Atoms
 public import Irreducibility.Arithmetic
@@ -15,8 +15,10 @@ public import Irreducibility.Arithmetic
 /-!
 # Irreducibility -- Lean 4 formalization
 
-Rings of arbitrary periods, composite periods included, are combined into a drum level by
-level; relations between rings are read by ticking and common parts by Euclid's procedure
-on relations. The development shows which rings contribute their whole period and how the
-level sizes of the consecutive rings `2, 3, ..., n` are determined.
+A residue number system over arbitrary moduli, composite and not pairwise coprime moduli
+included: residues are computed by counting, gcds by Euclid's algorithm on residues, and the
+moduli are combined into a mixed-radix system. The development shows which moduli receive
+their whole value as radix, how the radices of the consecutive moduli `2, 3, ..., n` are
+determined, and how comparison, overflow detection, exact division, base extension and
+primality testing are computed on residues without assembling the number.
 -/

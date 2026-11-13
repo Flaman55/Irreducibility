@@ -1,395 +1,402 @@
 module
 
 /-!
-# Rings, relations and levels
+# Moduli, residues and radices
 
-Every object in this file is a ring period (a natural number) or a state below a period.
-No definition refers to primes, to factorization, or to a number built from the ring states.
+Every object in this file is a modulus (a natural number) or a residue below a modulus.
+No definition refers to primes, to factorization, or to a number assembled from residues.
 
-* `pos d t` -- where ring `d` stands after `t` ticks, obtained by ticking alone: the ring
-  advances by one tooth per tick and returns to `0` when it completes a turn.
-* `relation a b` -- where ring `b` stands when ring `a` completes its first turn, that is
-  after `a` ticks.
-* `commonPart a b` -- Euclid's procedure run on relations only.
-* `turnOn radices c` -- where one whole turn of a drum with level sizes `radices` stands on
-  ring `c`, read level by level without forming the turn.
-* `commonPartWithTurn radices m` -- the part ring `m` shares with the turn of a drum whose
-  levels have sizes `radices`: `commonPart` of where the turn stands on ring `m` and `m`.
-* `levels rings` -- the drum built from `rings` in order: each ring contributes a level of
-  size `m / commonPartWithTurn (levels so far) m`.
-* `IrreducibleAfter before m` -- ring `m` contributes its whole period: nothing of it is
-  carried by the rings before it.
-* `windowAtoms lo hi` -- the steps read from pairs of rings of the window `lo, ..., hi` that
-  stand at `0` on no smaller step kept before.
-* `addOn`, `subOn`, `mulOn`, `powOn`, `exactDivOn`, `modR`, `addressR` -- arithmetic on the
-  states of a number, ring by ring; `addWraps` and `subWraps` read a pass over the end of the
-  turn by comparing states.
+* `countMod d t` -- the residue of `t` modulo `d`, obtained by counting alone: add `1` per
+  step and reset to `0` on reaching `d`.
+* `resid a b` -- the residue of `a` modulo `b`, that is `countMod b a`.
+* `euclid a b` -- Euclid's algorithm computed with `resid` only.
+* `prodMod radices c` -- the residue modulo `c` of the product of `radices`, computed factor
+  by factor without forming the product.
+* `gcdProd radices m` -- `euclid` of `prodMod radices m` and `m`, the gcd of `m` with the
+  product of `radices`.
+* `radices moduli` -- the mixed-radix system of `moduli` in order: modulus `m` receives the
+  radix `m / gcdProd (radices so far) m`.
+* `IrreducibleAfter before m` -- modulus `m` receives the radix `m`: no factor of it is
+  covered by the moduli before it.
+* `intervalAtoms lo hi` -- the differences `k` read from pairs of multiples of `k` in the
+  interval `lo, ..., hi` that are divisible by no smaller difference kept before.
+* `addRes`, `subRes`, `mulRes`, `powRes`, `exactDivRes`, `divModRes`, `addressRes` --
+  arithmetic on residue vectors, modulus by modulus; `addOverflow` and `subUnderflow` detect
+  a result outside `[0, lcm)` by comparing residue vectors.
 -/
 
 namespace Irreducibility
 
-/-- Position of ring `d` after `t` ticks, by ticking: one tooth per tick, back to `0` after
-a whole turn. -/
-@[expose] public def pos (d : Nat) : Nat → Nat
+/-- The residue of `t` modulo `d` by counting: add `1` per step, reset to `0` on reaching
+`d`. -/
+@[expose] public def countMod (d : Nat) : Nat → Nat
   | 0 => 0
-  | t + 1 => if pos d t + 1 = d then 0 else pos d t + 1
+  | t + 1 => if countMod d t + 1 = d then 0 else countMod d t + 1
 
-/-- Where ring `b` stands when ring `a` completes its first turn. -/
-@[expose] public def relation (a b : Nat) : Nat := pos b a
+/-- The residue of `a` modulo `b`. -/
+@[expose] public def resid (a b : Nat) : Nat := countMod b a
 
-/-- Euclid's procedure on relations, with a fuel bound; `commonPart` supplies enough fuel. -/
-@[expose] public def commonPartAux : Nat → Nat → Nat → Nat
+/-- Euclid's algorithm on residues, with a fuel bound; `euclid` supplies enough fuel. -/
+@[expose] public def euclidAux : Nat → Nat → Nat → Nat
   | 0, a, _ => a
-  | fuel + 1, a, b => if b = 0 then a else commonPartAux fuel b (relation a b)
+  | fuel + 1, a, b => if b = 0 then a else euclidAux fuel b (resid a b)
 
-/-- The common part of rings `a` and `b`: Euclid's procedure on relations. -/
-@[expose] public def commonPart (a b : Nat) : Nat := commonPartAux (b + 1) a b
+/-- The greatest common divisor of `a` and `b` by Euclid's algorithm on residues. -/
+@[expose] public def euclid (a b : Nat) : Nat := euclidAux (b + 1) a b
 
-/-- Where one whole turn of a drum with level sizes `radices` stands on ring `c`. -/
-@[expose] public def turnOn : List Nat → Nat → Nat
+/-- The residue modulo `c` of the product of `radices`, factor by factor. -/
+@[expose] public def prodMod : List Nat → Nat → Nat
   | [], c => 1 % c
-  | r :: rs, c => (relation r c * turnOn rs c) % c
+  | r :: rs, c => (resid r c * prodMod rs c) % c
 
-/-- The part ring `m` shares with the turn of a drum with level sizes `radices`: Euclid's
-procedure on ring `m` and where the turn stands on it; the turn itself is never formed. -/
-@[expose] public def commonPartWithTurn (radices : List Nat) (m : Nat) : Nat :=
-  commonPart (turnOn radices m) m
+/-- The gcd of `m` with the product of `radices`: Euclid's algorithm on `m` and the residue
+of the product modulo `m`; the product itself is never formed. -/
+@[expose] public def gcdProd (radices : List Nat) (m : Nat) : Nat :=
+  euclid (prodMod radices m) m
 
-/-- The level sizes of the drum built from `rings` in order. -/
-@[expose] public def levels (rings : List Nat) : List Nat :=
-  rings.foldl (fun acc m => acc ++ [m / commonPartWithTurn acc m]) []
+/-- The radices of the mixed-radix system of `moduli` in order: each modulus `m` receives
+`m` divided by its gcd with the product of the radices before it. -/
+@[expose] public def radices (moduli : List Nat) : List Nat :=
+  moduli.foldl (fun acc m => acc ++ [m / gcdProd acc m]) []
 
-/-- The level size ring `m` gets on top of the drum built from `before`. -/
-@[expose] public def levelSize (before : List Nat) (m : Nat) : Nat :=
-  m / commonPartWithTurn (levels before) m
+/-- The radix modulus `m` receives after the moduli `before`. -/
+@[expose] public def newRadix (before : List Nat) (m : Nat) : Nat :=
+  m / gcdProd (radices before) m
 
-/-- Ring `m` is irreducible after `before`: it contributes its whole period. -/
+/-- Modulus `m` is irreducible after `before`: it receives the radix `m`. -/
 @[expose] public def IrreducibleAfter (before : List Nat) (m : Nat) : Prop :=
-  levelSize before m = m
+  newRadix before m = m
 
-/-- The consecutive rings `2, 3, ..., n - 1`. -/
-@[expose] public def ringsBelow (n : Nat) : List Nat := (List.range n).drop 2
+/-- The consecutive moduli `2, 3, ..., n - 1`. -/
+@[expose] public def initialModuli (n : Nat) : List Nat := (List.range n).drop 2
 
-/-! ## Positions on a drum
+/-! ## Mixed-radix representations
 
-A drum position is a list of levels `(digit, size)`, lowest level first. -/
+A mixed-radix representation is a list of pairs `(digit, radix)`, least significant first. -/
 
-/-- Where a drum position stands on ring `c`, read level by level from the top: each level
-contributes its digit plus its size's relation to `c` times what the levels above give. -/
-@[expose] public def positionOn : List (Nat × Nat) → Nat → Nat
+/-- The residue modulo `c` of the value of a mixed-radix representation, by Horner's rule
+from the most significant digit, with every radix reduced modulo `c`. -/
+@[expose] public def evalMod : List (Nat × Nat) → Nat → Nat
   | [], _ => 0
-  | (d, r) :: rest, c => (d + relation r c * positionOn rest c) % c
+  | (d, r) :: rest, c => (d + resid r c * evalMod rest c) % c
 
-/-- Step `step` teeth at a time around ring `b` from `pos`, at most `fuel` more steps; the
-number of steps taken when the ring first stands at `1`. -/
-@[expose] public def inverseAux (step b : Nat) : Nat → Nat → Nat → Nat
+/-- Add `step` modulo `b` to `cur`, at most `fuel` more times; the number of additions after
+which the residue first equals `1`. -/
+@[expose] public def invModAux (step b : Nat) : Nat → Nat → Nat → Nat
   | 0, _, _ => 0
-  | fuel + 1, t, pos =>
-    if (pos + step) % b = 1 then t + 1 else inverseAux step b fuel (t + 1) ((pos + step) % b)
+  | fuel + 1, t, cur =>
+    if (cur + step) % b = 1 then t + 1 else invModAux step b fuel (t + 1) ((cur + step) % b)
 
-/-- The number of `a`-steps around ring `b` that land on `1`. -/
-@[expose] public def inverse (a b : Nat) : Nat :=
-  if b = 1 then 0 else inverseAux (relation a b) b b 0 0
+/-- The least `x ≥ 1` with `x * a ≡ 1 (mod b)`, found by repeated addition of `a` modulo `b`;
+`0` when `b = 1` or no such `x ≤ b` exists. -/
+@[expose] public def invMod (a b : Nat) : Nat :=
+  if b = 1 then 0 else invModAux (resid a b) b b 0 0
 
-/-- The level ring `m` in state `s` adds on top of the drum position `acc`; `none` when the
-state contradicts the levels below. -/
+/-- The digit and radix that modulus `m` with residue `s` appends to the mixed-radix
+representation `acc` (Garner's step on arbitrary moduli); `none` when `s` is incompatible
+with the residues already represented. -/
 @[expose] public def digitStep (acc : List (Nat × Nat)) (m s : Nat) : Option (Nat × Nat) :=
-  let g := commonPartWithTurn (acc.map Prod.snd) m
+  let g := gcdProd (acc.map Prod.snd) m
   let r := m / g
-  let y := (s + m - positionOn acc m) % m
+  let y := (s + m - evalMod acc m) % m
   if y % g = 0 then
-    some (if 1 < r then (y / g * inverse (turnOn (acc.map Prod.snd) m / g % r) r % r, r)
+    some (if 1 < r then (y / g * invMod (prodMod (acc.map Prod.snd) m / g % r) r % r, r)
       else (0, r))
   else none
 
-/-- The drum position given by ring states, built ring by ring on top of `acc`. -/
-@[expose] public def digitsOfAux : List (Nat × Nat) → List Nat → List Nat →
+/-- The mixed-radix representation given by residues, extended modulus by modulus from
+`acc`. -/
+@[expose] public def toMixedRadixAux : List (Nat × Nat) → List Nat → List Nat →
     Option (List (Nat × Nat))
   | acc, m :: ms, s :: ss =>
     match digitStep acc m s with
     | none => none
-    | some dr => digitsOfAux (acc ++ [dr]) ms ss
+    | some dr => toMixedRadixAux (acc ++ [dr]) ms ss
   | acc, _, _ => some acc
 
-/-- The drum position of rings `rings` in states `states`. -/
-@[expose] public def digitsOf (rings states : List Nat) : Option (List (Nat × Nat)) :=
-  digitsOfAux [] rings states
+/-- The mixed-radix representation of the residues `residues` on `moduli`. -/
+@[expose] public def toMixedRadix (moduli residues : List Nat) : Option (List (Nat × Nat)) :=
+  toMixedRadixAux [] moduli residues
 
-/-- Compare two drum positions with the same level sizes, digit by digit from the top. -/
-@[expose] public def compareTop : List (Nat × Nat) → List (Nat × Nat) → Ordering
+/-- Compare two mixed-radix representations with the same radices, digit by digit from the
+most significant. -/
+@[expose] public def compareDigits : List (Nat × Nat) → List (Nat × Nat) → Ordering
   | (a, _) :: as, (b, _) :: bs =>
-    match compareTop as bs with
+    match compareDigits as bs with
     | .eq => compare a b
     | o => o
   | _, _ => .eq
 
-/-- Compare two sets of states on the same rings: build both drum positions, then compare
-from the top. -/
-@[expose] public def compareOn (rings xs ys : List Nat) : Option Ordering :=
-  match digitsOf rings xs, digitsOf rings ys with
-  | some dx, some dy => some (compareTop dx dy)
+/-- Compare two residue vectors on the same moduli: convert both to mixed radix, then compare
+from the most significant digit. -/
+@[expose] public def compareRes (moduli xs ys : List Nat) : Option Ordering :=
+  match toMixedRadix moduli xs, toMixedRadix moduli ys with
+  | some dx, some dy => some (compareDigits dx dy)
   | _, _ => none
 
-/-! ## Packs
+/-! ## Blocks
 
-A pack is a group of rings that acts as one ring: its period is the turn of the drum built
-from its members, and its state is the position on that turn. A number on a drum of packs is
-given by the member states of its packs and, for the number of whole turns of that drum, the
-member states of its rotation packs. -/
+A block is a list of moduli used as one modulus: its modulus is the lcm of its members, and its
+residue is the value of the mixed-radix representation of the member residues. A number in
+block representation is given by the member residues of its blocks and, for the quotient of
+the number by the lcm of those blocks, the member residues of its quotient blocks. -/
 
-/-- The position a drum position stands for on the turn of its levels, below that turn. -/
-@[expose] public def value : List (Nat × Nat) → Nat
+/-- The value of a mixed-radix representation, below the product of its radices. -/
+@[expose] public def eval : List (Nat × Nat) → Nat
   | [] => 0
-  | (d, r) :: rest => d + r * value rest
+  | (d, r) :: rest => d + r * eval rest
 
-/-- A pack as one ring: the turn of the drum built from its members and the position on it;
-`none` for contradictory member states. -/
-@[expose] public def packRing (members states : List Nat) : Option (Nat × Nat) :=
-  match digitsOf members states with
-  | some ds => some (ds.foldr (fun p acc => p.2 * acc) 1, value ds)
+/-- A block as one modulus: the product of the radices of its members and the value of their
+mixed-radix representation; `none` for incompatible member residues. -/
+@[expose] public def blockModulus (moduli residues : List Nat) : Option (Nat × Nat) :=
+  match toMixedRadix moduli residues with
+  | some ds => some (ds.foldr (fun p acc => p.2 * acc) 1, eval ds)
   | none => none
 
-/-- The pack rings and pack states of a drum of packs. -/
-@[expose] public def drumOfPacks : List (List Nat) → List (List Nat) →
+/-- The block moduli and block residues of a list of blocks. -/
+@[expose] public def blockModuli : List (List Nat) → List (List Nat) →
     Option (List Nat × List Nat)
   | p :: ps, s :: ss =>
-    match packRing p s, drumOfPacks ps ss with
+    match blockModulus p s, blockModuli ps ss with
     | some (c, x), some (cs, xs) => some (c :: cs, x :: xs)
     | _, _ => none
   | _, _ => some ([], [])
 
-/-- A number on a drum of packs: member states of `packs`, and member states of `rotPacks`
-for the number of whole turns of the drum of `packs`. -/
-public structure Packed where
-  packs : List (List Nat)
-  states : List (List Nat)
-  rotPacks : List (List Nat)
-  rotStates : List (List Nat)
+/-- A number in block representation: member residues of `blocks`, and member residues of
+`quotBlocks` for the quotient of the number by the lcm of the block moduli of `blocks`. -/
+public structure BlockRep where
+  blocks : List (List Nat)
+  residues : List (List Nat)
+  quotBlocks : List (List Nat)
+  quotResidues : List (List Nat)
 
-/-- Carry the drum position given by `states` on `rings` onto the rings `target`. -/
-@[expose] public def extend (rings states target : List Nat) : Option (List Nat) :=
-  match digitsOf rings states with
-  | some ds => some (target.map (positionOn ds))
+/-- Base extension: the residues on `target` of the number given by `residues` on
+`moduli`. -/
+@[expose] public def baseExtend (moduli residues target : List Nat) : Option (List Nat) :=
+  match toMixedRadix moduli residues with
+  | some ds => some (target.map (evalMod ds))
   | none => none
 
-/-- One drum of packs and rotation packs: a rotation pack `c` in state `k` stands at
-`k` turns of the drum of packs plus the position of that drum on `c`. -/
-@[expose] public def flatten (x : Packed) : Option (List Nat × List Nat) :=
-  match drumOfPacks x.packs x.states, drumOfPacks x.rotPacks x.rotStates with
+/-- One list of moduli for blocks and quotient blocks: a quotient block of modulus `c` with
+residue `k` receives the residue `k * L + r` modulo `c`, where `L` is the lcm of the blocks
+and `r` the value of their mixed-radix representation. -/
+@[expose] public def flatten (x : BlockRep) : Option (List Nat × List Nat) :=
+  match blockModuli x.blocks x.residues, blockModuli x.quotBlocks x.quotResidues with
   | some (dr, ds), some (kr, ks) =>
-    match digitsOf dr ds with
+    match toMixedRadix dr ds with
     | some dd => some (dr ++ kr, ds ++ (kr.zip ks).map fun (c, k) =>
-        (k * turnOn (dd.map Prod.snd) c + positionOn dd c) % c)
+        (k * prodMod (dd.map Prod.snd) c + evalMod dd c) % c)
     | none => none
   | _, _ => none
 
-/-- The rings of `rx` followed by the rings of `ry` not among them. -/
+/-- The moduli of `rx` followed by the moduli of `ry` not among them. -/
 @[expose] public def union (rx ry : List Nat) : List Nat :=
   rx ++ ry.filter fun c => !rx.contains c
 
-/-- Compare two numbers given on different drums of packs: flatten both, carry both onto
-the common rings, then compare from the top. -/
-@[expose] public def comparePacked (x y : Packed) : Option Ordering :=
+/-- Compare two numbers in different block representations: flatten both, extend both to the
+union of their moduli, then compare residue vectors. -/
+@[expose] public def compareBlocks (x y : BlockRep) : Option Ordering :=
   match flatten x, flatten y with
   | some (rx, sx), some (ry, sy) =>
-    match extend rx sx (union rx ry), extend ry sy (union rx ry) with
-    | some ex, some ey => compareOn (union rx ry) ex ey
+    match baseExtend rx sx (union rx ry), baseExtend ry sy (union rx ry) with
+    | some ex, some ey => compareRes (union rx ry) ex ey
     | _, _ => none
   | _, _ => none
 
-/-! ## Primality on a drum
+/-! ## Primality on residues
 
-A number is given by its states on a drum. Trial rings `m = 2, 3, ...` are compared with it
-through their own states `m % c` and `m * m % c` on the drum's rings, both read from
-relations, and the number's state on ring `m` is read from its drum position. -/
+A number is given by its residues. Trial divisors `m = 2, 3, ...` are compared with it through
+their own residue vectors `m % c` and `m * m % c`, and the residue of the number modulo `m` is
+computed from its mixed-radix representation. -/
 
-/-- Try rings `m, m + 1, ...`, at most `fuel` of them, against the number given by `states`
-on `rings` with drum position `ds`: `true` when `m` reaches the number or `m * m` passes
-it, `false` when the number is below `m` or stands at `0` on ring `m`; `none` when the fuel
-runs out or the states contradict each other. -/
-@[expose] public def primeOnAux (rings states : List Nat) (ds : List (Nat × Nat)) :
+/-- Try divisors `m, m + 1, ...`, at most `fuel` of them, against the number given by
+`residues` on `moduli` with mixed-radix representation `ds`: `true` when `m` equals the number
+or `m * m` exceeds it, `false` when the number is below `m` or divisible by `m`; `none` when
+the fuel runs out or the residues are incompatible. -/
+@[expose] public def isPrimeResAux (moduli residues : List Nat) (ds : List (Nat × Nat)) :
     Nat → Nat → Option Bool
   | 0, _ => none
   | fuel + 1, m =>
-    match compareOn rings (rings.map (relation m)) states with
+    match compareRes moduli (moduli.map (resid m)) residues with
     | some .eq => some true
     | some .gt => some false
     | some .lt =>
-      match compareOn rings (rings.map fun c => relation m c * relation m c % c) states with
+      match compareRes moduli (moduli.map fun c => resid m c * resid m c % c) residues with
       | some .gt => some true
       | some _ =>
-        if positionOn ds m = 0 then some false else primeOnAux rings states ds fuel (m + 1)
+        if evalMod ds m = 0 then some false else isPrimeResAux moduli residues ds fuel (m + 1)
       | none => none
     | none => none
 
-/-- Whether the number given by `states` on `rings` is prime, trying at most `fuel` rings
-from `2` on. -/
-@[expose] public def primeOn (fuel : Nat) (rings states : List Nat) : Option Bool :=
-  match digitsOf rings states with
-  | some ds => primeOnAux rings states ds fuel 2
+/-- Whether the number given by `residues` on `moduli` is prime, trying at most `fuel`
+divisors from `2` on. -/
+@[expose] public def isPrimeRes (fuel : Nat) (moduli residues : List Nat) : Option Bool :=
+  match toMixedRadix moduli residues with
+  | some ds => isPrimeResAux moduli residues ds fuel 2
   | none => none
 
-/-! ## Atoms of a window
+/-! ## Atoms of an interval
 
-A window is the run of consecutive rings `lo, ..., hi`. A step `k` is read from two window
-rings `a` and `a + k` with ring `a` at `0` on ring `k`: their difference `k` is a part
-they share. -/
+An interval is the run of consecutive integers `lo, ..., hi`. A difference `k` is read from two
+elements `a` and `a + k` of the interval with `k ∣ a`: then `k` divides both. -/
 
-/-- The first ring from `lo` on that stands at `0` on ring `k`, from one relation. -/
+/-- The least multiple of `k` that is at least `lo`, from one residue. -/
 @[expose] public def firstMultipleFrom (lo k : Nat) : Nat :=
-  if relation lo k = 0 then lo else lo + (k - relation lo k)
+  if resid lo k = 0 then lo else lo + (k - resid lo k)
 
-/-- Take step `k` into the atoms found so far when the window `lo, ..., hi` holds two rings
-`a` and `a + k` with `a` at `0` on ring `k`, and `k` stands at `0` on none of those atoms. -/
+/-- Append `k` to the atoms found so far when the interval `lo, ..., hi` contains `a` and
+`a + k` with `k ∣ a`, and no atom found so far divides `k`. -/
 @[expose] public def atomStep (lo hi : Nat) (atoms : List Nat) (k : Nat) : List Nat :=
-  if firstMultipleFrom lo k + k ≤ hi ∧ atoms.all (fun p => relation k p != 0) = true then
+  if firstMultipleFrom lo k + k ≤ hi ∧ atoms.all (fun p => resid k p != 0) = true then
     atoms ++ [k]
   else atoms
 
-/-- The atoms of the window `lo, ..., hi`: the steps `2, ..., hi - lo` in order, each kept
-by `atomStep`. -/
-@[expose] public def windowAtoms (lo hi : Nat) : List Nat :=
-  (ringsBelow (hi - lo + 1)).foldl (atomStep lo hi) []
+/-- The atoms of the interval `lo, ..., hi`: the differences `2, ..., hi - lo` in order, each
+kept by `atomStep`. -/
+@[expose] public def intervalAtoms (lo hi : Nat) : List Nat :=
+  (initialModuli (hi - lo + 1)).foldl (atomStep lo hi) []
 
-/-! ## Arithmetic on a drum
+/-! ## Arithmetic on residues
 
-A number on rings `rings` is given by one state per ring. Sums, differences, products and
-powers are taken ring by ring and stand for the result on the turn of the drum; whether a sum
-or a difference passes the end of the turn is read by comparing states. -/
+A number on `moduli` is given by one residue per modulus. Sums, differences, products and
+powers are computed modulus by modulus and give the result modulo the lcm of the moduli;
+overflow of a sum and underflow of a difference are detected by comparing residue vectors. -/
 
-/-- Apply `f m a b` on each ring `m` to its states `a` and `b`. -/
-@[expose] public def ringwise (f : Nat → Nat → Nat → Nat) :
+/-- Apply `f m a b` for each modulus `m` to its residues `a` and `b`. -/
+@[expose] public def pointwise (f : Nat → Nat → Nat → Nat) :
     List Nat → List Nat → List Nat → List Nat
-  | m :: rs, a :: xs, b :: ys => f m a b :: ringwise f rs xs ys
+  | m :: rs, a :: xs, b :: ys => f m a b :: pointwise f rs xs ys
   | _, _, _ => []
 
-/-- The sum of two numbers, ring by ring. -/
-@[expose] public def addOn (rings xs ys : List Nat) : List Nat :=
-  ringwise (fun m a b => (a + b) % m) rings xs ys
+/-- The sum of two numbers, modulus by modulus. -/
+@[expose] public def addRes (moduli xs ys : List Nat) : List Nat :=
+  pointwise (fun m a b => (a + b) % m) moduli xs ys
 
-/-- The difference of two numbers, ring by ring: the second state is taken back from the
-first, around the ring. -/
-@[expose] public def subOn (rings xs ys : List Nat) : List Nat :=
-  ringwise (fun m a b => (a + (m - b)) % m) rings xs ys
+/-- The difference of two numbers, modulus by modulus: `(a + (m - b)) % m`. -/
+@[expose] public def subRes (moduli xs ys : List Nat) : List Nat :=
+  pointwise (fun m a b => (a + (m - b)) % m) moduli xs ys
 
-/-- The sum passes the end of the turn: its states compare below those of the first term. -/
-@[expose] public def addWraps (rings xs ys : List Nat) : Bool :=
-  decide (compareOn rings (addOn rings xs ys) xs = some .lt)
+/-- The sum overflows the lcm of the moduli: its residue vector compares below that of the
+first term. -/
+@[expose] public def addOverflow (moduli xs ys : List Nat) : Bool :=
+  decide (compareRes moduli (addRes moduli xs ys) xs = some .lt)
 
-/-- The difference passes below `0`: the first term compares below the second. -/
-@[expose] public def subWraps (rings xs ys : List Nat) : Bool :=
-  decide (compareOn rings xs ys = some .lt)
+/-- The difference underflows `0`: the first term compares below the second. -/
+@[expose] public def subUnderflow (moduli xs ys : List Nat) : Bool :=
+  decide (compareRes moduli xs ys = some .lt)
 
-/-- The product of two numbers, ring by ring. -/
-@[expose] public def mulOn (rings xs ys : List Nat) : List Nat :=
-  ringwise (fun m a b => a * b % m) rings xs ys
+/-- The product of two numbers, modulus by modulus. -/
+@[expose] public def mulRes (moduli xs ys : List Nat) : List Nat :=
+  pointwise (fun m a b => a * b % m) moduli xs ys
 
-/-- The `e`-th power of a number: `e` products ring by ring, starting from the states of `1`. -/
-@[expose] public def powOn (rings xs : List Nat) : Nat → List Nat
-  | 0 => rings.map (relation 1 ·)
-  | e + 1 => mulOn rings (powOn rings xs e) xs
+/-- The `e`-th power of a number: `e` products modulus by modulus, starting from the residues
+of `1`. -/
+@[expose] public def powRes (moduli xs : List Nat) : Nat → List Nat
+  | 0 => moduli.map (resid 1 ·)
+  | e + 1 => mulRes moduli (powRes moduli xs e) xs
 
-/-- The rings that carry the quotient by `t`: each ring `m` keeps `m / commonPart m t`. -/
-@[expose] public def exactDivRings (rings : List Nat) (t : Nat) : List Nat :=
-  rings.map fun m => m / commonPart m t
+/-- The moduli of the quotient by `t`: each modulus `m` becomes `m / gcd(m, t)`. -/
+@[expose] public def divModuli (moduli : List Nat) (t : Nat) : List Nat :=
+  moduli.map fun m => m / euclid m t
 
-/-- Exact division by `t`, ring by ring: on ring `m` with common part `g` with `t`, the state
-divided by `g` is stepped by the inverse of `t / g` around the ring `m / g`. -/
-@[expose] public def exactDivOn (rings states : List Nat) (t : Nat) : List Nat :=
+/-- Exact division by `t`, modulus by modulus: for modulus `m` and `g = gcd(m, t)`, the
+residue divided by `g` is multiplied by the inverse of `t / g` modulo `m / g`. -/
+@[expose] public def exactDivRes (moduli residues : List Nat) (t : Nat) : List Nat :=
   List.zipWith (fun m s =>
-    let g := commonPart m t
+    let g := euclid m t
     let r := m / g
-    s / g * inverse (t / g % r) r % r) rings states
+    s / g * invMod (t / g % r) r % r) moduli residues
 
-/-- The phase of a number on ring `T`, read from its drum position, and the number of whole
-turns of ring `T` before it: the phase taken back on every ring, divided exactly by `T`. -/
-@[expose] public def modR (rings states : List Nat) (T : Nat) : Option (Nat × List Nat) :=
-  match digitsOf rings states with
+/-- Division with remainder by `T` on residues: the remainder `r`, computed from the
+mixed-radix representation, and the residues of the quotient, obtained by subtracting `r`
+modulus by modulus and dividing exactly by `T`. -/
+@[expose] public def divModRes (moduli residues : List Nat) (T : Nat) : Option (Nat × List Nat) :=
+  match toMixedRadix moduli residues with
   | some ds =>
-    let r := positionOn ds T
-    some (r, exactDivOn rings (subOn rings states (rings.map (relation r ·))) T)
+    let r := evalMod ds T
+    some (r, exactDivRes moduli (subRes moduli residues (moduli.map (resid r ·))) T)
   | none => none
 
-/-- The address `(k, i)` of a number on ring `T`, phases counted `1, ..., T`: the phase `i`,
-and the states of the turn number `k` on the rings `exactDivRings rings T`. -/
-@[expose] public def addressR (rings states : List Nat) (T : Nat) : Option (Nat × List Nat) :=
-  match modR rings states T with
+/-- The address `(k, i)` of a number with respect to `T`, offsets counted `1, ..., T`: the
+offset `i`, and the residues of the block index `k` on the moduli `divModuli moduli T`. -/
+@[expose] public def addressRes (moduli residues : List Nat) (T : Nat) : Option (Nat × List Nat) :=
+  match divModRes moduli residues T with
   | some (r, qs) =>
     if r = 0 then some (T, qs)
-    else some (r, addOn (exactDivRings rings T) qs ((exactDivRings rings T).map (relation 1 ·)))
+    else some (r, addRes (divModuli moduli T) qs ((divModuli moduli T).map (resid 1 ·)))
   | none => none
 
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
-example : relation 17 5 = 2 := by decide
-example : commonPart 12 18 = 6 := by decide
-example : levels [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1] := by decide
-example : levels [6, 35] = [6, 35] := by decide
-example : levels [4, 4] = [4, 1] := by decide
-example : digitsOf [2, 3, 4, 5] [1, 1, 1, 2] = some [(1, 2), (0, 3), (0, 2), (3, 5)] := by
+example : resid 17 5 = 2 := by decide
+example : euclid 12 18 = 6 := by decide
+example : radices [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1] := by decide
+example : radices [6, 35] = [6, 35] := by decide
+example : radices [4, 4] = [4, 1] := by decide
+example : toMixedRadix [2, 3, 4, 5] [1, 1, 1, 2] = some [(1, 2), (0, 3), (0, 2), (3, 5)] := by
   decide
-example : digitsOf [6, 4, 9] [4, 0, 1] = some [(4, 6), (0, 2), (2, 3)] := by decide
-example : digitsOf [4, 4, 6] [3, 3, 1] = some [(3, 4), (0, 1), (1, 3)] := by decide
-example : digitsOf [2, 4] [1, 2] = none := by decide
-example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [0, 2, 2, 3] = some .lt := by decide
-example : compareOn [2, 3, 4, 5] [1, 1, 1, 2] [1, 1, 1, 2] = some .eq := by decide
-example : compareOn [6, 4, 9] [4, 0, 1] [3, 3, 0] = some .gt := by decide
+example : toMixedRadix [6, 4, 9] [4, 0, 1] = some [(4, 6), (0, 2), (2, 3)] := by decide
+example : toMixedRadix [4, 4, 6] [3, 3, 1] = some [(3, 4), (0, 1), (1, 3)] := by decide
+example : toMixedRadix [2, 4] [1, 2] = none := by decide
+example : compareRes [2, 3, 4, 5] [1, 1, 1, 2] [0, 2, 2, 3] = some .lt := by decide
+example : compareRes [2, 3, 4, 5] [1, 1, 1, 2] [1, 1, 1, 2] = some .eq := by decide
+example : compareRes [6, 4, 9] [4, 0, 1] [3, 3, 0] = some .gt := by decide
 
-example : packRing [2, 3, 4] [1, 2, 3] = some (12, 11) := by decide
-example : packRing [4, 6] [3, 1] = some (12, 7) := by decide
-example : packRing [2, 4] [1, 2] = none := by decide
-example : drumOfPacks [[2, 3], [4, 5]] [[1, 2], [3, 4]] = some ([6, 20], [5, 19]) := by decide
-example : extend [6, 20, 7, 8] [4, 0, 2, 4] [9, 5] = some [1, 0] := by decide
+example : blockModulus [2, 3, 4] [1, 2, 3] = some (12, 11) := by decide
+example : blockModulus [4, 6] [3, 1] = some (12, 7) := by decide
+example : blockModulus [2, 4] [1, 2] = none := by decide
+example : blockModuli [[2, 3], [4, 5]] [[1, 2], [3, 4]] = some ([6, 20], [5, 19]) := by decide
+example : baseExtend [6, 20, 7, 8] [4, 0, 2, 4] [9, 5] = some [1, 0] := by decide
 example : flatten ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩ =
     some ([6, 20, 56], [4, 0, 44]) := by decide
 example : flatten ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩ =
     some ([12, 5, 7, 9], [5, 1, 3, 2]) := by decide
 set_option maxRecDepth 20000 in
-example : comparePacked ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
+example : compareBlocks ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
     ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩ = some .lt := by decide
 set_option maxRecDepth 20000 in
-example : comparePacked ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩
+example : compareBlocks ⟨[[2, 3, 4], [5]], [[1, 2, 1], [1]], [[7], [9]], [[1], [1]]⟩
     ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩ = some .gt := by decide
 set_option maxRecDepth 20000 in
-example : comparePacked ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
+example : compareBlocks ⟨[[2, 3], [4, 5]], [[0, 1], [0, 0]], [[7, 8]], [[1, 1]]⟩
     ⟨[[2, 3, 4], [5]], [[0, 1, 0], [0]], [[7], [9]], [[1], [1]]⟩ = some .eq := by decide
 
-example : primeOn 20 [4, 3, 5, 7] [1, 1, 2, 6] = some true := by decide
-example : primeOn 20 [4, 3, 5, 7] [3, 1, 1, 0] = some false := by decide
-example : primeOn 20 [4, 3, 5, 7] [1, 1, 1, 2] = some false := by decide
-example : primeOn 20 [4, 3, 5, 7] [1, 2, 3, 1] = some true := by decide
-example : primeOn 20 [4, 3, 5, 7] [2, 2, 2, 2] = some true := by decide
-example : primeOn 20 [4, 3, 5, 7] [1, 1, 1, 1] = some false := by decide
-example : primeOn 20 [4, 3, 5, 7] [0, 0, 0, 0] = some false := by decide
-example : primeOn 3 [4, 3, 5, 7] [1, 1, 2, 6] = none := by decide
-example : primeOn 20 [6, 4, 9, 5] [1, 1, 7, 4] = some false := by decide
-example : primeOn 20 [6, 4, 9, 5] [5, 1, 2, 3] = none := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [1, 1, 2, 6] = some true := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [3, 1, 1, 0] = some false := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [1, 1, 1, 2] = some false := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [1, 2, 3, 1] = some true := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [2, 2, 2, 2] = some true := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [1, 1, 1, 1] = some false := by decide
+example : isPrimeRes 20 [4, 3, 5, 7] [0, 0, 0, 0] = some false := by decide
+example : isPrimeRes 3 [4, 3, 5, 7] [1, 1, 2, 6] = none := by decide
+example : isPrimeRes 20 [6, 4, 9, 5] [1, 1, 7, 4] = some false := by decide
+example : isPrimeRes 20 [6, 4, 9, 5] [5, 1, 2, 3] = none := by decide
 set_option maxRecDepth 20000 in
-example : primeOn 200 [6, 4, 9, 5] [5, 1, 2, 3] = some true := by decide
-example : primeOn 20 [2, 4] [1, 2] = none := by decide
+example : isPrimeRes 200 [6, 4, 9, 5] [5, 1, 2, 3] = some true := by decide
+example : isPrimeRes 20 [2, 4] [1, 2] = none := by decide
 
 set_option maxRecDepth 20000 in
-example : windowAtoms 50 60 = [2, 3, 5] := by decide
+example : intervalAtoms 50 60 = [2, 3, 5] := by decide
 set_option maxRecDepth 20000 in
-example : windowAtoms 100 130 = [2, 3, 5, 7, 11, 13, 17] := by decide
+example : intervalAtoms 100 130 = [2, 3, 5, 7, 11, 13, 17] := by decide
 set_option maxRecDepth 20000 in
-example : windowAtoms 2 60 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] := by decide
-example : windowAtoms 7 7 = [] := by decide
-example : windowAtoms 9 3 = [] := by decide
+example : intervalAtoms 2 60 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] := by decide
+example : intervalAtoms 7 7 = [] := by decide
+example : intervalAtoms 9 3 = [] := by decide
 
-example : addOn [4, 3, 5] [2, 2, 0] [0, 2, 0] = [2, 1, 0] := by decide
-example : addWraps [4, 3, 5] [2, 2, 0] [0, 2, 0] = true := by decide
-example : addWraps [4, 3, 5] [0, 2, 0] [2, 0, 0] = false := by decide
-example : subOn [4, 3, 5] [0, 2, 0] [2, 2, 0] = [2, 0, 0] := by decide
-example : subWraps [4, 3, 5] [0, 2, 0] [2, 2, 0] = true := by decide
-example : subWraps [4, 3, 5] [2, 2, 0] [0, 2, 0] = false := by decide
-example : mulOn [4, 3, 5] [3, 1, 2] [1, 0, 4] = [3, 0, 3] := by decide
-example : powOn [4, 3, 5] [3, 1, 2] 2 = [1, 1, 4] := by decide
-example : powOn [4, 3, 5] [3, 1, 2] 0 = [1, 1, 1] := by decide
-example : exactDivRings [4, 3, 5] 6 = [2, 1, 5] := by decide
-example : exactDivOn [4, 3, 5] [2, 0, 2] 6 = [1, 0, 2] := by decide
-example : modR [4, 3, 5] [3, 2, 2] 6 = some (5, [1, 0, 2]) := by decide
-example : addressR [4, 3, 5] [3, 2, 2] 6 = some (5, [0, 0, 3]) := by decide
-example : addressR [4, 3, 5] [2, 0, 2] 6 = some (6, [1, 0, 2]) := by decide
+example : addRes [4, 3, 5] [2, 2, 0] [0, 2, 0] = [2, 1, 0] := by decide
+example : addOverflow [4, 3, 5] [2, 2, 0] [0, 2, 0] = true := by decide
+example : addOverflow [4, 3, 5] [0, 2, 0] [2, 0, 0] = false := by decide
+example : subRes [4, 3, 5] [0, 2, 0] [2, 2, 0] = [2, 0, 0] := by decide
+example : subUnderflow [4, 3, 5] [0, 2, 0] [2, 2, 0] = true := by decide
+example : subUnderflow [4, 3, 5] [2, 2, 0] [0, 2, 0] = false := by decide
+example : mulRes [4, 3, 5] [3, 1, 2] [1, 0, 4] = [3, 0, 3] := by decide
+example : powRes [4, 3, 5] [3, 1, 2] 2 = [1, 1, 4] := by decide
+example : powRes [4, 3, 5] [3, 1, 2] 0 = [1, 1, 1] := by decide
+example : divModuli [4, 3, 5] 6 = [2, 1, 5] := by decide
+example : exactDivRes [4, 3, 5] [2, 0, 2] 6 = [1, 0, 2] := by decide
+example : divModRes [4, 3, 5] [3, 2, 2] 6 = some (5, [1, 0, 2]) := by decide
+example : addressRes [4, 3, 5] [3, 2, 2] 6 = some (5, [0, 0, 3]) := by decide
+example : addressRes [4, 3, 5] [2, 0, 2] 6 = some (6, [1, 0, 2]) := by decide
 
 end Irreducibility
