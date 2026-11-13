@@ -32,7 +32,7 @@ theorem foldl_lcm_dvd_iff (l : List Nat) (a M : Nat) :
     rw [List.foldl_cons, ih, Nat.lcm_dvd_iff]
     simp [and_assoc]
 
-theorem foldl_lcm_one_dvd_iff (l : List Nat) (M : Nat) :
+public theorem foldl_lcm_one_dvd_iff (l : List Nat) (M : Nat) :
     l.foldl Nat.lcm 1 ∣ M ↔ ∀ x ∈ l, x ∣ M := by
   simp [foldl_lcm_dvd_iff]
 

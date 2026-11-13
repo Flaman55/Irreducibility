@@ -21,6 +21,9 @@ No definition refers to primes, to factorization, or to a number built from the 
   carried by the rings before it.
 * `windowAtoms lo hi` -- the steps read from pairs of rings of the window `lo, ..., hi` that
   stand at `0` on no smaller step kept before.
+* `addOn`, `subOn`, `mulOn`, `powOn`, `exactDivOn`, `modR`, `addressR` -- arithmetic on the
+  states of a number, ring by ring; `addWraps` and `subWraps` read a pass over the end of the
+  turn by comparing states.
 -/
 
 namespace Irreducibility
@@ -248,6 +251,74 @@ by `atomStep`. -/
 @[expose] public def windowAtoms (lo hi : Nat) : List Nat :=
   (ringsBelow (hi - lo + 1)).foldl (atomStep lo hi) []
 
+/-! ## Arithmetic on a drum
+
+A number on rings `rings` is given by one state per ring. Sums, differences, products and
+powers are taken ring by ring and stand for the result on the turn of the drum; whether a sum
+or a difference passes the end of the turn is read by comparing states. -/
+
+/-- Apply `f m a b` on each ring `m` to its states `a` and `b`. -/
+@[expose] public def ringwise (f : Nat → Nat → Nat → Nat) :
+    List Nat → List Nat → List Nat → List Nat
+  | m :: rs, a :: xs, b :: ys => f m a b :: ringwise f rs xs ys
+  | _, _, _ => []
+
+/-- The sum of two numbers, ring by ring. -/
+@[expose] public def addOn (rings xs ys : List Nat) : List Nat :=
+  ringwise (fun m a b => (a + b) % m) rings xs ys
+
+/-- The difference of two numbers, ring by ring: the second state is taken back from the
+first, around the ring. -/
+@[expose] public def subOn (rings xs ys : List Nat) : List Nat :=
+  ringwise (fun m a b => (a + (m - b)) % m) rings xs ys
+
+/-- The sum passes the end of the turn: its states compare below those of the first term. -/
+@[expose] public def addWraps (rings xs ys : List Nat) : Bool :=
+  decide (compareOn rings (addOn rings xs ys) xs = some .lt)
+
+/-- The difference passes below `0`: the first term compares below the second. -/
+@[expose] public def subWraps (rings xs ys : List Nat) : Bool :=
+  decide (compareOn rings xs ys = some .lt)
+
+/-- The product of two numbers, ring by ring. -/
+@[expose] public def mulOn (rings xs ys : List Nat) : List Nat :=
+  ringwise (fun m a b => a * b % m) rings xs ys
+
+/-- The `e`-th power of a number: `e` products ring by ring, starting from the states of `1`. -/
+@[expose] public def powOn (rings xs : List Nat) : Nat → List Nat
+  | 0 => rings.map (relation 1 ·)
+  | e + 1 => mulOn rings (powOn rings xs e) xs
+
+/-- The rings that carry the quotient by `t`: each ring `m` keeps `m / commonPart m t`. -/
+@[expose] public def exactDivRings (rings : List Nat) (t : Nat) : List Nat :=
+  rings.map fun m => m / commonPart m t
+
+/-- Exact division by `t`, ring by ring: on ring `m` with common part `g` with `t`, the state
+divided by `g` is stepped by the inverse of `t / g` around the ring `m / g`. -/
+@[expose] public def exactDivOn (rings states : List Nat) (t : Nat) : List Nat :=
+  List.zipWith (fun m s =>
+    let g := commonPart m t
+    let r := m / g
+    s / g * inverse (t / g % r) r % r) rings states
+
+/-- The phase of a number on ring `T`, read from its drum position, and the number of whole
+turns of ring `T` before it: the phase taken back on every ring, divided exactly by `T`. -/
+@[expose] public def modR (rings states : List Nat) (T : Nat) : Option (Nat × List Nat) :=
+  match digitsOf rings states with
+  | some ds =>
+    let r := positionOn ds T
+    some (r, exactDivOn rings (subOn rings states (rings.map (relation r ·))) T)
+  | none => none
+
+/-- The address `(k, i)` of a number on ring `T`, phases counted `1, ..., T`: the phase `i`,
+and the states of the turn number `k` on the rings `exactDivRings rings T`. -/
+@[expose] public def addressR (rings states : List Nat) (T : Nat) : Option (Nat × List Nat) :=
+  match modR rings states T with
+  | some (r, qs) =>
+    if r = 0 then some (T, qs)
+    else some (r, addOn (exactDivRings rings T) qs ((exactDivRings rings T).map (relation 1 ·)))
+  | none => none
+
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
 example : relation 17 5 = 2 := by decide
@@ -305,5 +376,20 @@ set_option maxRecDepth 20000 in
 example : windowAtoms 2 60 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] := by decide
 example : windowAtoms 7 7 = [] := by decide
 example : windowAtoms 9 3 = [] := by decide
+
+example : addOn [4, 3, 5] [2, 2, 0] [0, 2, 0] = [2, 1, 0] := by decide
+example : addWraps [4, 3, 5] [2, 2, 0] [0, 2, 0] = true := by decide
+example : addWraps [4, 3, 5] [0, 2, 0] [2, 0, 0] = false := by decide
+example : subOn [4, 3, 5] [0, 2, 0] [2, 2, 0] = [2, 0, 0] := by decide
+example : subWraps [4, 3, 5] [0, 2, 0] [2, 2, 0] = true := by decide
+example : subWraps [4, 3, 5] [2, 2, 0] [0, 2, 0] = false := by decide
+example : mulOn [4, 3, 5] [3, 1, 2] [1, 0, 4] = [3, 0, 3] := by decide
+example : powOn [4, 3, 5] [3, 1, 2] 2 = [1, 1, 4] := by decide
+example : powOn [4, 3, 5] [3, 1, 2] 0 = [1, 1, 1] := by decide
+example : exactDivRings [4, 3, 5] 6 = [2, 1, 5] := by decide
+example : exactDivOn [4, 3, 5] [2, 0, 2] 6 = [1, 0, 2] := by decide
+example : modR [4, 3, 5] [3, 2, 2] 6 = some (5, [1, 0, 2]) := by decide
+example : addressR [4, 3, 5] [3, 2, 2] 6 = some (5, [0, 0, 3]) := by decide
+example : addressR [4, 3, 5] [2, 0, 2] 6 = some (6, [1, 0, 2]) := by decide
 
 end Irreducibility
