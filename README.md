@@ -15,7 +15,7 @@ License: Apache-2.0.
 ## Definitions
 
 All definitions except the sech comb are in `lean/Irreducibility/Defs.lean`, which does not
-import Mathlib. The sech comb needs real numbers and is defined in `Waves.lean`.
+import Mathlib. The sech comb needs real numbers and is defined in `SechComb.lean`.
 
 A mixed-radix representation is a list of pairs `(digit, radix)`, least significant first.
 
@@ -53,17 +53,17 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 | `exactDivRes moduli residues t` | exact division by `t`: for modulus `m` and `g = gcd(m, t)`, the residue divided by `g` times `invMod (t / g)` modulo `m / g` |
 | `divModRes moduli residues T` | division with remainder by `T`: the remainder from `evalMod`, and the quotient by subtracting it and dividing exactly by `T` |
 | `addressRes moduli residues T` | the address `(k, i)` with respect to `T`, offsets counted `1, ..., T` |
-| `sech x` | hyperbolic secant (`Waves.lean`) |
-| `sechComb s d t` | the sum of the `sech` pulses at scale `s` centred at the multiples of `d` around `t` (`Waves.lean`) |
-| `lastPeak s d t` | the last step up to `t` at which `sechComb s d` exceeds `1 / 2` (`Waves.lean`) |
-| `waveResid s a b` | the residue of `a` modulo `b` read from the comb: the steps from the last peak for `b` up to `a` (`Waves.lean`) |
+| `sech x` | hyperbolic secant (`SechComb.lean`) |
+| `sechComb s d t` | the sum of the `sech` pulses at scale `s` centred at the multiples of `d` around `t` (`SechComb.lean`) |
+| `lastPeak s d t` | the last step up to `t` at which `sechComb s d` exceeds `1 / 2` (`SechComb.lean`) |
+| `combResid s a b` | the residue of `a` modulo `b` read from the comb: the steps from the last peak for `b` up to `a` (`SechComb.lean`) |
 
 ## What is proved
 
 | Step | File | Statement |
 |---|---|---|
 | T1 Residues | `Residues.lean` | `countMod d t = t % d` for every `d`, `d = 0` included; hence `resid a b = a % b` |
-| T1w Sech comb | `Waves.lean` | for scale `s ≥ 3` and every modulus `d ≥ 1`: `1 / 2 < sechComb s d t ↔ d ∣ t`; hence `waveResid s a b = resid a b` for `b ≥ 1`; at `s = 2` the pulses for `d = 2` overlap and `waveResid 2 3 2 ≠ resid 3 2` |
+| T1w Sech comb | `SechComb.lean` | for scale `s ≥ 3` and every modulus `d ≥ 1`: `1 / 2 < sechComb s d t ↔ d ∣ t`; hence `combResid s a b = resid a b` for `b ≥ 1`; at `s = 2` the pulses for `d = 2` overlap and `combResid 2 3 2 ≠ resid 3 2` |
 | T2 Euclid | `Euclid.lean` | `euclid a b = Nat.gcd a b` |
 | T3 Radices | `Radices.lean` | `prodMod radices c = radices.prod % c`; `gcdProd radices m = gcd (radices.prod) m`; the product of the radices of positive moduli is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
 | T4 Consecutive moduli | `InitialModuli.lean` | for `n ≥ 2`: `newRadix (initialModuli n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (initialModuli n) n ↔ Nat.Prime n`; `Real.log (newRadix (initialModuli n) n) = Λ n` (von Mangoldt) |
@@ -93,7 +93,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
   Irreducibility/
     Defs.lean               the definitions (no Mathlib)
     Residues.lean           T1
-    Waves.lean              T1w
+    SechComb.lean           T1w
     Euclid.lean             T2
     Radices.lean            T3
     InitialModuli.lean      T4
