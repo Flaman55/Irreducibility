@@ -69,6 +69,8 @@ import Mathlib. The waves need real numbers and are defined in `Waves.lean`.
 | T7 Window atoms | `Atoms.lean` | `k ∈ windowAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the window is an atom; a window of `L` rings recovers every prime `p` with `2 * p ≤ L` |
 | T8 Arithmetic | `Arithmetic.lean` | for positive rings and states `x % m`, `y % m`: `addOn`, `mulOn`, `powOn` give the states of `x + y`, `x * y`, `x ^ e`; `subOn` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the turn); below the turn, `addWraps ↔ W ≤ x + y` and `subWraps ↔ x < y`; for `t ∣ x`, `exactDivOn` gives the states of `x / t` on the rings `m / gcd m t`, and `x / t` is below their turn; `modR` gives `(x % T, states of x / T)`; for `0 < x`, `addressR` gives `i = (x - 1) % T + 1` and the states of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the rings `p ^ (v + 1), ..., p ^ (v + j)` multiply the turn by `p ^ j` |
 
+`FORMULAS.md` states the same results in standard notation, each with its Lean theorem.
+
 T3 holds for any list of positive rings, in any order. T4 is the special case of the
 consecutive rings `2, ..., n - 1`.
 
@@ -96,6 +98,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Primality.lean          T6
     Atoms.lean              T7
     Arithmetic.lean         T8
+FORMULAS.md                 the proved statements in standard notation
 Latex/                      paper sources (in preparation)
 ```
 
