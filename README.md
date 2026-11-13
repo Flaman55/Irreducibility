@@ -19,7 +19,8 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | `pos d t` | position of ring `d` after `t` ticks, by ticking alone |
 | `relation a b` | where ring `b` stands when ring `a` completes its first turn |
 | `commonPart a b` | Euclid's procedure run on relations |
-| `commonPartWithTurn radices m` | the part ring `m` shares with the turn of a drum, computed level by level without forming the turn |
+| `turnOn radices c` | where one whole turn of a drum stands on ring `c`, read level by level without forming the turn |
+| `commonPartWithTurn radices m` | the part ring `m` shares with the turn of a drum: `commonPart (turnOn radices m) m` |
 | `levels rings` | the drum built from `rings` in order: each ring adds a level of size `m / commonPartWithTurn (levels so far) m` |
 | `levelSize before m` | the level ring `m` gets on top of the drum built from `before` |
 | `IrreducibleAfter before m` | ring `m` contributes its whole period: `levelSize before m = m` |
@@ -43,7 +44,7 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 |---|---|---|
 | T1 Ticking | `Ticking.lean` | `pos d t = t % d` for every `d`, `d = 0` included; hence `relation a b = a % b` |
 | T2 Euclid | `Euclid.lean` | `commonPart a b = Nat.gcd a b` |
-| T3 Drum | `Drum.lean` | `commonPartWithTurn radices m = gcd (radices.prod) m`; the product of the level sizes of positive rings is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
+| T3 Drum | `Drum.lean` | `turnOn radices c = radices.prod % c`; `commonPartWithTurn radices m = gcd (radices.prod) m`; the product of the level sizes of positive rings is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
 | T4 Consecutive rings | `Bridge.lean` | for `n ≥ 2`: `levelSize (ringsBelow n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (ringsBelow n) n ↔ Nat.Prime n`; `Real.log (levelSize (ringsBelow n) n) = Λ n` (von Mangoldt) |
 | T5 Compare | `Compare.lean` | for positive rings and states `n % m`: `digitsOf` returns the mixed-radix digits of `n` modulo the drum's turn, on the levels `levels rings`; `positionOn ds c = value ds % c`; for `n, n'` below the turn, `compareOn rings (states of n) (states of n') = some (compare n n')` |
 | T5c Packs | `Packs.lean` | a pack of positive rings in states `n % m` is one ring of period `lcm` in state `n % lcm`; `flatten` gives every ring `c` of the drum of packs and rotation packs the state `n % c`; below the turn, `extend` gives `n % c` on any ring `c`; for `n` below the lcm of all rings of its packing and `n'` below that of its own, `comparePacked (Packed.of n D K) (Packed.of n' D' K') = some (compare n n')` |

@@ -123,7 +123,7 @@ theorem gcd_turn_not_prime_pow {n : Nat} (hn : 2 ≤ n) (h : ¬ IsPrimePow n) :
 `n = p ^ k`, otherwise `1`. -/
 public theorem levelSize_ringsBelow {n : Nat} (hn : 2 ≤ n) :
     levelSize (ringsBelow n) n = if IsPrimePow n then n.minFac else 1 := by
-  rw [levelSize_eq _ _ (by omega) (fun x hx => by have := mem_ringsBelow.1 hx; omega)]
+  rw [levelSize_eq _ _ (fun x hx => by have := mem_ringsBelow.1 hx; omega)]
   split_ifs with h
   · rw [isPrimePow_nat_iff] at h
     obtain ⟨p, k, hp, hk, rfl⟩ := h
