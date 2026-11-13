@@ -11,6 +11,7 @@ the Lean statement.
 - The turn of $R$: $W(R) = \mathrm{lcm}(r_1, \dots, r_k)$, and $W = 1$ for the empty list.
 - The states of $x$ on $R$: $[x]_R = (x \bmod r_1, \dots, x \bmod r_k)$.
 - $\prod R = r_1 \cdots r_k$.
+- $(R, m_1, \dots, m_j)$ is the list $R$ followed by $m_1, \dots, m_j$.
 - A drum position is a list of levels $(d_1, s_1), \dots, (d_k, s_k)$ (digit, size).
 - $\Lambda$ is the von Mangoldt function.
 
@@ -64,8 +65,7 @@ $$\mathrm{commonPartWithTurn}(R, m) = \gcd\big(\textstyle\prod R, m\big)$$
 
 (`commonPartWithTurn_eq`)
 
-$$\mathrm{levels}(R \mathbin{+\mkern-10mu+} [m]) = \mathrm{levels}(R) \mathbin{+\mkern-10mu+}
-\Big[\frac{m}{\gcd\big(\prod \mathrm{levels}(R), m\big)}\Big]$$
+$$\mathrm{levels}(R, m) = \Big(\mathrm{levels}(R),\ \frac{m}{\gcd\big(\prod \mathrm{levels}(R), m\big)}\Big)$$
 
 (`levels_append`)
 
@@ -241,6 +241,6 @@ $$\mathrm{addressR}(R, [x]_R, T) = \big(i,\ [k]_{R/T}\big)$$
 
 Chapters: for any rings $R$, a prime $p$ with $p^v \mid W$ and $p^{v+1} \nmid W$, and every $j$:
 
-$$W\big(R \mathbin{+\mkern-10mu+} (p^{v+1}, p^{v+2}, \dots, p^{v+j})\big) = p^j W(R)$$
+$$W\big(R, p^{v+1}, p^{v+2}, \dots, p^{v+j}\big) = p^j W(R)$$
 
 (`chapters_spec`)
