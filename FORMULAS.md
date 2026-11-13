@@ -48,6 +48,38 @@ $$\mathrm{combResid}_s(a, b) = a - b \lfloor a/b \rfloor = \mathrm{resid}(a, b)$
 At $s = 2$ the reading fails: $\mathrm{combResid}_2(3, 2) = 0 \ne 1 = \mathrm{resid}(3, 2)$
 (`combResid_two_ne`).
 
+## T1w Ratio form (`SechRatio.lean`)
+
+$$\mathrm{sechRatio}(x, y) = \frac{2xy}{x^2 + y^2}$$
+
+For all real $a, b$, and with $X = e^{st}$, $Y = e^{su}$:
+
+$$\mathrm{sech}(a - b) = \mathrm{sechRatio}(e^a, e^b), \qquad
+\mathrm{sech}\big(s(t - u)\big) = \frac{2XY}{X^2 + Y^2}$$
+
+(`sech_sub_eq_sechRatio`, `sech_mul_sub_eq_sechRatio`)
+
+For $x, y > 0$ and every $n$:
+
+$$\mathrm{sechRatio}(x, y) \le 1, \qquad \mathrm{sechRatio}(x, y) = 1 \iff x = y, \qquad
+\frac{2x^n y}{x^{2n} + y^2} = 1 \iff y = x^n$$
+
+(`sechRatio_le_one`, `sechRatio_eq_one_iff`, `sechRatio_pow_eq_one_iff`)
+
+For $x > 0$, the comb at scale $\ln x$:
+
+$$C_{\ln x, d}(t) = \sum_{i=-1}^{2} \mathrm{sechRatio}\big(x^t,\ x^{d(\lfloor t/d \rfloor + i)}\big)$$
+
+(`sechComb_log_eq`, integer exponents)
+
+$$3 \le \ln x \iff e^3 \le x$$
+
+(`three_le_log_iff`), and for $x \ge e^3$, every modulus $d \ge 1$ and every $t$:
+
+$$C_{\ln x, d}(t) > \tfrac{1}{2} \iff d \mid t$$
+
+(`one_half_lt_sechComb_log_iff`)
+
 ## T2 Euclid (`Euclid.lean`)
 
 $$\mathrm{euclid}(a, b) = \gcd(a, b)$$
@@ -256,3 +288,40 @@ Appending prime powers: for any moduli $R$, a prime $p$ with $p^v \mid W$ and $p
 $$W\big(R, p^{v+1}, p^{v+2}, \dots, p^{v+j}\big) = p^j W(R)$$
 
 (`lcm_append_prime_powers`)
+
+## T9 Multiplicative counting (`Multiplicative.lean`)
+
+$$\mathrm{mulCount}(g, q, 0) = 1 \bmod q, \qquad
+\mathrm{mulCount}(g, q, t + 1) = \mathrm{resid}\big(\mathrm{mulCount}(g, q, t) \cdot g,\ q\big)$$
+
+For all $g, q, t$:
+
+$$\mathrm{mulCount}(g, q, t) = g^t \bmod q$$
+
+(`mulCount_eq`)
+
+In the rest of this section $q$ is prime and $g$ is a primitive root modulo $q$: the order of
+$g$ in $\mathbb{Z}/q$ is $q - 1$.
+
+$$\mathrm{mulCount}(g, q, t) = \mathrm{mulCount}(g, q, u) \iff
+\mathrm{countMod}(q - 1, t) = \mathrm{countMod}(q - 1, u)$$
+
+(`mulCount_eq_mulCount_iff`)
+
+$$0 < r < q \implies \exists\, t < q - 1:\ \mathrm{mulCount}(g, q, t) = r$$
+
+(`exists_mulCount_eq`)
+
+$$\mathrm{mulCount}(g, q, t) = 1 \iff (q - 1) \mid t$$
+
+(`mulCount_eq_one_iff`), and for scale $s \ge 3$:
+
+$$C_{s, q-1}(t) > \tfrac{1}{2} \iff \mathrm{mulCount}(g, q, t) = 1$$
+
+(`one_half_lt_sechComb_iff_mulCount_eq_one`)
+
+For $q \ne 2$, $q \nmid N$ and $\mathrm{mulCount}(g, q, t) = N \bmod q$:
+
+$$N \text{ is a square modulo } q \iff t \text{ is even}$$
+
+(`isSquare_iff_even`)
