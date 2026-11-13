@@ -37,6 +37,9 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | `flatten x` | one drum of packs and rotation packs: rotation pack `c` in state `k` stands at `k` turns plus the position on `c` |
 | `comparePacked x y` | flatten both numbers, carry both onto the union of their rings, compare with `compareOn` |
 | `primeOn fuel rings states` | try rings `m = 2, 3, ...` against a number given on a drum: `m` and `m * m` are compared with it through their states on the drum's rings (read from relations), the number's state on ring `m` through `positionOn`; `true` when `m` reaches the number or `m * m` passes it, `false` when ring `m` stands at `0`, `none` when the fuel runs out |
+| `firstMultipleFrom lo k` | the first ring from `lo` on that stands at `0` on ring `k`, from one relation |
+| `atomStep lo hi atoms k` | keep step `k` when the window `lo, ..., hi` holds rings `a` and `a + k` with `a` at `0` on ring `k`, and `k` stands at `0` on no atom kept before |
+| `windowAtoms lo hi` | the steps `2, ..., hi - lo` in order, each kept by `atomStep` |
 
 ## What is proved
 
@@ -49,6 +52,7 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | T5 Compare | `Compare.lean` | for positive rings and states `n % m`: `digitsOf` returns the mixed-radix digits of `n` modulo the drum's turn, on the levels `levels rings`; `positionOn ds c = value ds % c`; for `n, n'` below the turn, `compareOn rings (states of n) (states of n') = some (compare n n')` |
 | T5c Packs | `Packs.lean` | a pack of positive rings in states `n % m` is one ring of period `lcm` in state `n % lcm`; `flatten` gives every ring `c` of the drum of packs and rotation packs the state `n % c`; below the turn, `extend` gives `n % c` on any ring `c`; for `n` below the lcm of all rings of its packing and `n'` below that of its own, `comparePacked (Packed.of n D K) (Packed.of n' D' K') = some (compare n n')` |
 | T6 Primality | `Primality.lean` | for positive rings with `n` and `2` below the turn: every answer of `primeOn` on the states `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the turn |
+| T7 Window atoms | `Atoms.lean` | `k ∈ windowAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the window is an atom; a window of `L` rings recovers every prime `p` with `2 * p ≤ L` |
 
 T3 holds for any list of positive rings, in any order. T4 is the special case of the
 consecutive rings `2, ..., n - 1`.
@@ -74,6 +78,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Compare.lean            T5
     Packs.lean              T5c
     Primality.lean          T6
+    Atoms.lean              T7
 Latex/                      paper sources (in preparation)
 ```
 
