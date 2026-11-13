@@ -1,0 +1,625 @@
+\documentclass[11pt]{amsart}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\emergencystretch}{3em}
+
+\newcommand{\lean}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\fn}[1]{\mathrm{#1}}
+\newcommand{\st}[2]{[#1]_{#2}}
+\newcommand{\leanref}[1]{\par\nopagebreak\smallskip
+  {\small\raggedright\noindent Lean: #1\par}\medskip}
+
+\newtheorem{theorem}{Theorem}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+
+\title{Irreducible moduli: a formally verified residue number system over arbitrary moduli}
+\author{Artur Flamandzki}
+\date{}
+
+\begin{document}
+
+\begin{abstract}
+We define a residue number system over arbitrary moduli, composite and not pairwise coprime
+moduli included. Residues are computed by counting, greatest common divisors by Euclid's
+algorithm on residues, and the moduli are combined into a mixed-radix system in which each
+modulus $m$ receives the radix $m / \gcd(W, m)$, where $W$ is the product of the radices before
+it. No definition refers to primes, to factorization, or to a number assembled from residues.
+We prove that the product of the radices is the least common multiple of the moduli, in any
+order; that on the consecutive moduli $2, \dots, n-1$ the modulus $n$ receives the radix $p$ when
+$n = p^k$ and $1$ otherwise, so it receives its whole value exactly when $n$ is prime, and the
+logarithm of the radix is the von Mangoldt function. Numbers given only by their residues can
+be compared, tested for primality, added, subtracted, multiplied, raised to powers and divided
+exactly, with overflow and underflow detected; and the residue computed by counting is also
+read from a comb of hyperbolic-secant pulses from scale $3$ on. The work states several
+independent topics in one formal frame: remainders, Euclid's algorithm, the least common
+multiple of consecutive integers and the von Mangoldt function, primes in intervals of
+consecutive integers, and residue number system arithmetic over arbitrary moduli. Every
+statement in this paper is a theorem of the accompanying Lean~4 / Mathlib formalization, which
+builds with no \lean{sorry} and uses only the axioms \lean{propext}, \lean{Quot.sound} and
+\lean{Classical.choice}.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+A residue number system represents a number by its residues modulo a list of moduli. This
+paper defines such a system over arbitrary moduli, using counting modulo a modulus as the only
+primitive, and proves what it computes.
+
+The definitions (Section~\ref{sec:definitions}) use only moduli and residues below a modulus.
+Primes, factorizations and numbers assembled from residues do not occur in them. They occur
+only in the theorems (Section~\ref{sec:results}), which identify the computed quantities with
+the usual arithmetic ones: residues computed by counting with remainders, Euclid's algorithm on
+residues with greatest common divisors, the product of the radices with the least common
+multiple of the moduli, and the moduli that receive their whole value as radix after the
+consecutive moduli below them with the primes.
+
+\subsection*{Purpose and contributions}
+The aim is one frame in which several topics that are usually treated separately are stated
+with the same few notions and verified by the same proof checker. Within that frame, the work
+contributes three points that the author did not find in the literature:
+\begin{enumerate}
+  \item[(C1)] A machine-checked residue number system with its non-modular operations:
+    magnitude comparison, detection of overflow and underflow, exact division, and a primality
+    test, all on the residues of a number (T5, T5c, T6, T8). The author found formal proofs of
+    the Chinese remainder theorem, but no formal verification of comparison or mixed-radix
+    conversion in a residue number system.
+  \item[(C2)] Arbitrary moduli. The moduli need not be pairwise coprime: each modulus $m$
+    receives the radix $m / \gcd(W, m)$, only the part of $m$ that the moduli before it do not
+    already cover (T3), and comparison works on these radices (T5). The comparison methods the
+    author found assume pairwise coprime moduli.
+  \item[(C3)] No number is assembled from residues. Every computation goes through residues;
+    the only number formed from residues is the residue of a block modulus, which is below that
+    modulus (Section~\ref{sec:blocks}).
+\end{enumerate}
+In the same frame the work proves several known results (T1, T2, T4, T7) from the definitions
+rather than restating them, and adds the reading of residues from a sech comb (T1w).
+
+The comparison with earlier work reflects the literature known to the author at the time of
+writing; it states what the author did not find, not that no such work exists.
+
+\subsection*{Related work}
+Theorems T2--T4 are classical. The identity
+$\fn{lcm}(1, \dots, n) = e^{\psi(n)}$, with the jump by $p$ exactly at the powers of $p$, is
+formalized in Isabelle by Eberl~\cite{eberl-afp} and is part of Mathlib~\cite{mathlib} as
+\lean{Chebyshev.psi_eq_log_lcmUpto}; Mathlib also contains the Chinese remainder theorem for
+moduli that are not coprime (\lean{Nat.chineseRemainder'}). Here these facts are derived from
+definitions that do not mention them.
+
+Residue number systems go back to Garner~\cite{garner}. Addition and multiplication act on each
+residue separately, while comparison, overflow detection and division need a positional
+representation of the number, usually through mixed-radix conversion; a recent method and an
+account of the earlier ones are given in~\cite{didier}. Moduli that are not coprime are used in
+error-correcting residue codes~\cite{sundaram}. For the reading of residues from a sech comb
+(T1w) the author found no earlier work.
+
+Every theorem below is stated with the name of the Lean theorem that proves it. Hypotheses are
+given in full; nothing here is weaker or stronger than the Lean statement. The formalization
+and the build instructions are described in Section~\ref{sec:formalization}.
+
+\subsection*{Notation}
+All numbers are natural numbers. We write $x \bmod 0 = x$ (the Lean convention), and
+$\lfloor x/y \rfloor$ for integer division, with $\lfloor x/0 \rfloor = 0$. A list of moduli is
+written $R = (r_1, \dots, r_k)$; ``positive moduli'' means $r_i \ge 1$ for every $i$. We write
+$W(R) = \fn{lcm}(r_1, \dots, r_k)$, with $W = 1$ for the empty list; the residue vector of $x$
+on $R$ is $\st{x}{R} = (x \bmod r_1, \dots, x \bmod r_k)$; and $\prod R = r_1 \cdots r_k$. The
+list $R$ followed by $m_1, \dots, m_j$ is written $(R, m_1, \dots, m_j)$. $\Lambda$ is the von
+Mangoldt function.
+
+\section{Definitions}\label{sec:definitions}
+
+\subsection{Residues by counting and Euclid's algorithm}
+
+\begin{definition}
+The residue of $t$ modulo $d$ is computed by counting alone: add $1$ per step and reset to $0$
+on reaching $d$,
+\[
+  \fn{countMod}(d, 0) = 0, \qquad
+  \fn{countMod}(d, t + 1) =
+  \begin{cases}
+    0 & \text{if } \fn{countMod}(d, t) + 1 = d, \\
+    \fn{countMod}(d, t) + 1 & \text{otherwise,}
+  \end{cases}
+\]
+and $\fn{resid}(a, b) = \fn{countMod}(b, a)$.
+\end{definition}
+\leanref{\lean{countMod}, \lean{resid}}
+
+\begin{definition}
+Euclid's algorithm on residues:
+\[
+  \fn{euclid}(a, 0) = a, \qquad
+  \fn{euclid}(a, b) = \fn{euclid}\big(b, \fn{resid}(a, b)\big) \quad (b \ge 1).
+\]
+In Lean the recursion carries a fuel bound of $b + 1$ steps, which is always enough.
+\end{definition}
+\leanref{\lean{euclid}}
+
+\subsection{The mixed-radix system}
+
+\begin{definition}
+The residue modulo $c$ of the product of a list of radices is computed factor by factor,
+without forming the product:
+\[
+  \fn{prodMod}((), c) = 1 \bmod c, \qquad
+  \fn{prodMod}((r, R'), c) = \big(\fn{resid}(r, c) \cdot \fn{prodMod}(R', c)\big) \bmod c.
+\]
+The gcd of $m$ with that product is
+\[
+  \fn{gcdProd}(R, m) = \fn{euclid}\big(\fn{prodMod}(R, m), m\big).
+\]
+\end{definition}
+\leanref{\lean{prodMod}, \lean{gcdProd}}
+
+\begin{definition}
+The mixed-radix system of the moduli $m_1, \dots, m_k$ in this order has the radices
+$L_k = \fn{radices}(m_1, \dots, m_k)$, where $L_0 = ()$ and
+\[
+  L_{j+1} = \Big(L_j,\ \frac{m_{j+1}}{\fn{gcdProd}(L_j, m_{j+1})}\Big).
+\]
+The radix modulus $m$ receives after the moduli $B$ is
+\[
+  \fn{newRadix}(B, m) = \frac{m}{\fn{gcdProd}(\fn{radices}(B), m)},
+\]
+and $m$ is irreducible after $B$, $\fn{IrreducibleAfter}(B, m)$, when
+$\fn{newRadix}(B, m) = m$: it receives its whole value as radix. Finally
+$\fn{initialModuli}(n) = (2, 3, \dots, n - 1)$.
+\end{definition}
+\leanref{\lean{radices}, \lean{newRadix}, \lean{IrreducibleAfter}, \lean{initialModuli}}
+
+\begin{example}
+Checked by the Lean kernel (\lean{decide}):
+\[
+  \fn{radices}(2, 3, 4, 5, 6, 7, 8, 9, 10) = (2, 3, 2, 5, 1, 7, 2, 3, 1),
+\]
+\[
+  \fn{radices}(6, 35) = (6, 35), \qquad \fn{radices}(4, 4) = (4, 1).
+\]
+\end{example}
+
+\subsection{Mixed-radix representations and comparison}
+
+A mixed-radix representation is a list of pairs of a digit and a radix, least significant
+first: $D = \big((d_1, r_1), \dots, (d_k, r_k)\big)$.
+
+\begin{definition}
+The residue modulo $c$ of the value of $D$ is computed by Horner's rule from the most
+significant digit, with every radix reduced modulo $c$:
+\begin{align*}
+  \fn{evalMod}((), c) &= 0, \\
+  \fn{evalMod}\big(((d, r), D'), c\big) &= \big(d + \fn{resid}(r, c) \cdot \fn{evalMod}(D', c)\big) \bmod c.
+\end{align*}
+The value of $D$ is $\fn{eval}(D) = \sum_{i=1}^{k} d_i \prod_{j < i} r_j$. It is formed only as
+the residue of a block modulus (Section~\ref{sec:blocks}), where it is below that modulus.
+\end{definition}
+\leanref{\lean{evalMod}, \lean{eval}}
+
+\begin{definition}
+$\fn{invMod}(a, b)$ is the least $x \ge 1$ with $x a \equiv 1 \pmod b$, found by repeated
+addition of $a$ modulo $b$ (at most $b$ additions; $\fn{invMod}(a, 1) = 0$).
+$\fn{toMixedRadix}(R, S)$ converts the residues $S$ on the moduli $R$ to a mixed-radix
+representation, modulus by modulus (Garner's step on arbitrary moduli): modulus $m$ with
+residue $s$, appended to the representation $D$ built so far, with
+$g = \fn{gcdProd}(\text{radices of } D, m)$ and $r = m / g$, takes
+$y = (s - \fn{evalMod}(D, m)) \bmod m$; if $g \nmid y$ the residues are incompatible and the
+result is $\fn{none}$; otherwise the new radix is $r$ and the new digit is
+$(y / g) \cdot \fn{invMod}\big((\fn{prodMod}(\text{radices of } D, m) / g) \bmod r,\ r\big) \bmod r$
+(digit $0$ when $r = 1$). $\fn{compareRes}(R, S, S')$ converts both residue vectors and
+compares the two representations digit by digit from the most significant.
+\end{definition}
+\leanref{\lean{invMod}, \lean{toMixedRadix}, \lean{compareRes}}
+
+\subsection{Blocks}\label{sec:blocks}
+
+A block is a list of moduli used as one modulus: its modulus is the lcm of its members, and its
+residue is the value of the mixed-radix representation of the member residues.
+
+\begin{definition}
+A block of members $M$ with residues $S$ is the modulus and residue
+\[
+  \fn{blockModulus}(M, S) = \big(\textstyle\prod \text{radices of } D,\ \fn{eval}(D)\big),
+  \qquad D = \fn{toMixedRadix}(M, S),
+\]
+and $\fn{blockModuli}$ applies $\fn{blockModulus}$ to each block of a list. Base extension,
+$\fn{baseExtend}(R, S, T)$, takes $D = \fn{toMixedRadix}(R, S)$ and gives $\fn{evalMod}(D, c)$
+for each modulus $c$ in $T$.
+\end{definition}
+\leanref{\lean{blockModulus}, \lean{blockModuli}, \lean{baseExtend}}
+
+\begin{definition}
+A number in block representation ($\fn{BlockRep}$) is given by the member residues of its
+blocks and, for its quotient by the lcm of those blocks, the member residues of its quotient
+blocks. $\fn{flatten}$ turns it into one list of moduli: the block moduli followed by the
+quotient block moduli, where a quotient block of modulus $c$ with residue $k$ receives the
+residue
+$\big(k \cdot \fn{prodMod}(\text{radices of the blocks}, c) + \fn{evalMod}(\text{representation of the blocks}, c)\big) \bmod c$.
+$\fn{compareBlocks}(x, y)$ flattens both numbers, extends both to the moduli of $x$ followed by
+the moduli of $y$ not among them, and compares them there with $\fn{compareRes}$.
+
+For statements only, $\fn{BlockRep.of}(n, D, K)$ writes $n$ in blocks $D$ and quotient blocks
+$K$: the members $m$ of $D$ receive the residues $n \bmod m$, those of $K$ the residues
+$\lfloor n / L \rfloor \bmod m$, where $L$ is the lcm of all members of $D$.
+\end{definition}
+\leanref{\lean{BlockRep}, \lean{flatten}, \lean{compareBlocks}, \lean{BlockRep.of}}
+
+\subsection{Primality on residues}
+
+\begin{definition}
+A number is given by its residues $S$ on moduli $R$. Trial divisors $m = 2, 3, \dots$, at most
+$\fn{fuel}$ of them, are compared with it through their own residue vectors
+$(\fn{resid}(m, c))_{c \in R}$ and $(\fn{resid}(m, c)^2 \bmod c)_{c \in R}$, while the residue
+of the number modulo $m$ is computed with $\fn{evalMod}$ from its mixed-radix representation.
+$\fn{isPrimeRes}(\fn{fuel}, R, S)$ is $\fn{true}$ when $m$ equals the number or $m \cdot m$
+exceeds it, $\fn{false}$ when the number is below $m$ or divisible by $m$, and $\fn{none}$ when
+the fuel runs out or the residues are incompatible.
+\end{definition}
+\leanref{\lean{isPrimeRes}}
+
+\subsection{Atoms of an interval}
+
+\begin{definition}
+The differences of the interval $lo, \dots, hi$ are
+\[
+  \fn{Diff}(lo, hi) = \{\, k \ge 2 : \exists a:\ lo \le a,\ k \mid a,\ a + k \le hi \,\}.
+\]
+\end{definition}
+\leanref{\lean{IntervalDifference}}
+
+\begin{definition}
+$\fn{firstMultipleFrom}(lo, k)$ is the least multiple of $k$ that is at least $lo$, computed
+from one residue: $lo$ if $\fn{resid}(lo, k) = 0$, and $lo + k - \fn{resid}(lo, k)$ otherwise.
+The atoms of the interval $lo, \dots, hi$, $\fn{intervalAtoms}(lo, hi)$, are the differences
+$k = 2, \dots, hi - lo$, taken in order, that are kept when the interval contains $a$ and
+$a + k$ with $a = \fn{firstMultipleFrom}(lo, k)$, and $k$ is divisible by none of the atoms
+kept before. The definition does not refer to divisibility order; Theorem T7 shows that the
+atoms are the minimal elements of $\fn{Diff}(lo, hi)$ under divisibility, that is, the atoms
+of $\fn{Diff}(lo, hi)$ ordered by divisibility.
+\end{definition}
+\leanref{\lean{firstMultipleFrom}, \lean{intervalAtoms}}
+
+\subsection{Arithmetic on residues}
+
+\begin{definition}
+For each modulus $m$ with residues $a$ and $b$: $\fn{addRes}$ gives $(a + b) \bmod m$,
+$\fn{subRes}$ gives $(a + (m - b)) \bmod m$, $\fn{mulRes}$ gives $a b \bmod m$; $\fn{powRes}$
+performs $e$ products starting from the residues of $1$. A sum overflows, $\fn{addOverflow}$,
+when its residue vector compares below that of the first term; a difference underflows,
+$\fn{subUnderflow}$, when the first term compares below the second.
+\end{definition}
+\leanref{\lean{addRes}, \lean{subRes}, \lean{mulRes}, \lean{powRes}, \lean{addOverflow},
+\lean{subUnderflow}}
+
+\begin{definition}
+For a divisor $t$ each modulus $m$ is replaced by $m / \fn{euclid}(m, t)$; we write
+$R/t = \fn{divModuli}(R, t)$ for the resulting list. On modulus $m$ with
+$g = \fn{euclid}(m, t)$ and $r = m / g$, $\fn{exactDivRes}$ maps the residue $s$ to
+$(s / g) \cdot \fn{invMod}\big((t / g) \bmod r,\ r\big) \bmod r$. $\fn{divModRes}(R, S, T)$
+computes the remainder $\rho$ modulo $T$ with $\fn{evalMod}$, subtracts $\rho$ modulus by
+modulus and divides exactly by $T$. $\fn{addressRes}$ gives the address $(i, k)$ with the
+offsets counted $1, \dots, T$: remainder $0$ becomes offset $T$, and otherwise the quotient is
+increased by one.
+\end{definition}
+\leanref{\lean{divModuli}, \lean{exactDivRes}, \lean{divModRes}, \lean{addressRes}}
+
+\subsection{The sech comb}
+
+\begin{definition}
+Modulus $d$ is represented by a sum of $\fn{sech}$ pulses of width $1/s$ centred at the
+multiples of $d$, where $s$ is the scale:
+\[
+  \fn{sech}(x) = \frac{1}{\cosh(x)}, \qquad
+  C_{s,d}(t) = \sum_{i=-1}^{2} \fn{sech}\Big(s \big(t - d (\lfloor t/d \rfloor + i)\big)\Big).
+\]
+A step $t$ is a peak for $d$ when $C_{s,d}(t) > \frac12$. $\fn{lastPeak}_s(d, t)$ is the last
+peak for $d$ among the steps $1, \dots, t$ ($0$ if there is none), and
+$\fn{combResid}_s(a, b) = a - \fn{lastPeak}_s(b, a)$ reads the residue of $a$ modulo $b$
+backwards from $a$ to the last peak for $b$.
+\end{definition}
+\leanref{\lean{sech}, \lean{sechComb}, \lean{lastPeak}, \lean{combResid}}
+
+\section{Results}\label{sec:results}
+
+\subsection*{T1 Counting}
+\begin{theorem}
+For every $d$ and $t$, $d = 0$ included, $\fn{countMod}(d, t) = t \bmod d$. Hence
+$\fn{resid}(a, b) = a \bmod b$.
+\end{theorem}
+\leanref{\lean{countMod_eq_mod}, \lean{resid_eq_mod}}
+
+\subsection*{T1w Sech comb}
+\begin{theorem}
+For scale $s \ge 3$, every modulus $d \ge 1$ and every step $t$,
+\[
+  C_{s,d}(t) > \tfrac12 \iff d \mid t .
+\]
+Hence for $s \ge 3$ and $b \ge 1$, $\fn{combResid}_s(a, b) = \fn{resid}(a, b)$. At $s = 2$
+the reading fails: $\fn{combResid}_2(3, 2) = 0 \ne 1 = \fn{resid}(3, 2)$.
+\end{theorem}
+\leanref{\lean{one_half_lt_sechComb_iff}, \lean{combResid_eq}, \lean{combResid_two_ne}}
+
+\subsection*{T2 Euclid}
+\begin{theorem}
+$\fn{euclid}(a, b) = \gcd(a, b)$.
+\end{theorem}
+\leanref{\lean{euclid_eq_gcd}}
+
+\subsection*{T3 Mixed-radix system}
+\begin{theorem}
+For any list $R$ and any $c$, $m$:
+\[
+  \fn{prodMod}(R, c) = \textstyle\prod R \bmod c, \qquad
+  \fn{gcdProd}(R, m) = \gcd\big(\textstyle\prod R, m\big),
+\]
+\[
+  \fn{radices}(R, m) = \Big(\fn{radices}(R),\ \frac{m}{\gcd\big(\prod \fn{radices}(R), m\big)}\Big).
+\]
+\end{theorem}
+\leanref{\lean{prodMod_eq}, \lean{gcdProd_eq}, \lean{radices_append}}
+
+\begin{theorem}
+For positive moduli $R$ and a list $B$ of positive moduli,
+\[
+  \textstyle\prod \fn{radices}(R) = W(R), \qquad
+  \fn{newRadix}(B, m) = \dfrac{m}{\gcd(W(B), m)},
+\]
+and for $m \ge 1$, $\fn{IrreducibleAfter}(B, m) \iff \gcd(W(B), m) = 1$.
+\end{theorem}
+\leanref{\lean{prod_radices}, \lean{newRadix_eq}, \lean{irreducibleAfter_iff}}
+
+So the product of the radices of positive moduli is their least common multiple, in any order
+of the moduli, and a modulus receives its whole value as radix exactly when it is coprime to
+the lcm of the moduli before it.
+
+\subsection*{T4 Consecutive moduli}
+\begin{theorem}
+For $n \ge 2$,
+\[
+  \fn{newRadix}(\fn{initialModuli}(n), n) =
+  \begin{cases}
+    p & \text{if } n = p^k,\ p \text{ prime},\ k \ge 1, \\
+    1 & \text{otherwise,}
+  \end{cases}
+\]
+\[
+  \fn{IrreducibleAfter}(\fn{initialModuli}(n), n) \iff n \text{ is prime},
+\]
+\[
+  \log \fn{newRadix}(\fn{initialModuli}(n), n) = \Lambda(n).
+\]
+\end{theorem}
+\leanref{\lean{newRadix_initialModuli}, \lean{irreducibleAfter_initialModuli_iff},
+\lean{log_newRadix_initialModuli}}
+
+\subsection*{T5 Comparison}
+\begin{theorem}
+For every mixed-radix representation $D$ and modulus $c$,
+$\fn{evalMod}(D, c) = \fn{eval}(D) \bmod c$. For $b > 1$ and $\gcd(a, b) = 1$,
+$a \cdot \fn{invMod}(a, b) \equiv 1 \pmod b$.
+\end{theorem}
+\leanref{\lean{eval_append}, \lean{evalMod_eq}, \lean{invMod_spec}}
+
+\begin{theorem}
+For positive moduli $R$ and every $n$ there is a mixed-radix representation
+$D = ((d_i, r_i))_i$ with
+\[
+  \fn{toMixedRadix}(R, \st{n}{R}) = D, \qquad (r_i)_i = \fn{radices}(R), \qquad d_i < r_i,
+  \qquad \fn{eval}(D) = n \bmod W(R).
+\]
+For positive moduli $R$ and $n, n' < W(R)$,
+$\fn{compareRes}(R, \st{n}{R}, \st{n'}{R}) = \fn{compare}(n, n')$.
+\end{theorem}
+\leanref{\lean{toMixedRadix_spec}, \lean{compareRes_eq}}
+
+\subsection*{T5c Blocks}
+\begin{theorem}
+For positive moduli $M$, $\fn{blockModulus}(M, \st{n}{M}) = \big(W(M),\ n \bmod W(M)\big)$;
+for blocks $P_1, \dots, P_k$ of positive moduli, $\fn{blockModuli}$ gives the moduli
+$W(P_1), \dots, W(P_k)$ with the residues $n \bmod W(P_i)$. For positive moduli $R$, any
+moduli $T$ and $n < W(R)$, $\fn{baseExtend}(R, \st{n}{R}, T) = \st{n}{T}$.
+\end{theorem}
+\leanref{\lean{blockModulus_spec}, \lean{blockModuli_spec}, \lean{baseExtend_spec}}
+
+\begin{theorem}
+For blocks $D_1, \dots, D_a$ and quotient blocks $K_1, \dots, K_b$ of positive moduli, with
+$Q = \big(W(D_1), \dots, W(D_a), W(K_1), \dots, W(K_b)\big)$,
+\[
+  \fn{flatten}(\fn{BlockRep.of}(n, D, K)) = (Q, \st{n}{Q}).
+\]
+If moreover $n$ is below the lcm of all moduli of $D, K$ and $n'$ below that of all moduli of
+$D', K'$ (blocks of positive moduli), then
+\[
+  \fn{compareBlocks}\big(\fn{BlockRep.of}(n, D, K),\ \fn{BlockRep.of}(n', D', K')\big)
+  = \fn{compare}(n, n').
+\]
+\end{theorem}
+\leanref{\lean{flatten_spec}, \lean{compareBlocks_eq}}
+
+\subsection*{T6 Primality}
+\begin{theorem}
+Let $R$ be positive moduli with $n < W(R)$ and $2 < W(R)$. Every answer $b$ of
+$\fn{isPrimeRes}(\fn{fuel}, R, \st{n}{R})$ is true exactly when $n$ is prime, and an answer is
+given once
+\[
+  \fn{fuel} > n \quad\text{or}\quad
+  \Big(\fn{fuel} > \lfloor\sqrt n\rfloor \ \text{and}\ \big(\lfloor\sqrt n\rfloor + 1\big)^2 < W(R)\Big).
+\]
+\end{theorem}
+\leanref{\lean{isPrimeRes_sound}, \lean{isPrimeRes_eq}}
+
+\subsection*{T7 Interval atoms}
+\begin{theorem}
+For $k \ge 1$, $\fn{firstMultipleFrom}(lo, k)$ is the least multiple of $k$ that is $\ge lo$,
+and it lies in $[lo, lo + k)$. For all $lo$, $hi$, $k$,
+\[
+  k \in \fn{intervalAtoms}(lo, hi) \iff k \text{ is prime} \ \wedge\
+  \exists a:\ lo \le a,\ k \mid a,\ a + k \le hi .
+\]
+So every atom is prime (\lean{prime_of_mem_intervalAtoms}), and a prime $p$ with
+$lo + 2p \le hi + 1$ is an atom: an interval of $L$ consecutive integers yields every prime $p$
+with $2p \le L$.
+\end{theorem}
+\leanref{\lean{firstMultipleFrom_spec}, \lean{mem_intervalAtoms}, \lean{prime_mem_intervalAtoms}}
+
+\begin{theorem}
+Every divisor $d \ge 2$ of an element of $\fn{Diff}(lo, hi)$ is in $\fn{Diff}(lo, hi)$, and the
+atoms are the minimal elements of $\fn{Diff}(lo, hi)$ under divisibility:
+\[
+  k \in \fn{intervalAtoms}(lo, hi) \iff k \in \fn{Diff}(lo, hi) \ \wedge\
+  \forall d \in \fn{Diff}(lo, hi):\ d \mid k \implies d = k .
+\]
+\end{theorem}
+\leanref{\lean{intervalDifference_of_dvd}, \lean{mem_intervalAtoms_iff_minimal}}
+
+\begin{example}
+Checked by the Lean kernel: $\fn{intervalAtoms}(100, 130) = (2, 3, 5, 7, 11, 13, 17)$ and
+$\fn{intervalAtoms}(2, 60) = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29)$.
+\end{example}
+
+\subsection*{T8 Arithmetic}
+\begin{theorem}
+For any moduli $R$ and all $x, y, e$:
+\[
+  \fn{addRes}(R, \st{x}{R}, \st{y}{R}) = \st{x + y}{R}, \quad
+  \fn{mulRes}(R, \st{x}{R}, \st{y}{R}) = \st{x y}{R}, \quad
+  \fn{powRes}(R, \st{x}{R}, e) = \st{x^e}{R}.
+\]
+\end{theorem}
+\leanref{\lean{addRes_spec}, \lean{mulRes_spec}, \lean{powRes_spec}}
+
+In the rest of this subsection $R$ is a list of positive moduli and $W = W(R)$.
+
+\begin{theorem}
+If $y \le x$ then $\fn{subRes}(R, \st{x}{R}, \st{y}{R}) = \st{x - y}{R}$; if $y \le W$ then
+$\fn{subRes}(R, \st{x}{R}, \st{y}{R}) = \st{x + (W - y)}{R}$. For $x, y < W$,
+\[
+  \fn{addOverflow}(R, \st{x}{R}, \st{y}{R}) \iff W \le x + y, \qquad
+  \fn{subUnderflow}(R, \st{x}{R}, \st{y}{R}) \iff x < y .
+\]
+\end{theorem}
+\leanref{\lean{subRes_spec_of_le}, \lean{subRes_spec}, \lean{addOverflow_iff},
+\lean{subUnderflow_iff}}
+
+\begin{theorem}
+For $t \ge 1$ with $t \mid x$, $\fn{exactDivRes}(R, \st{x}{R}, t) = \st{x / t}{R/t}$, where
+$R/t = \big(r_i / \gcd(r_i, t)\big)_i$; and if $x < W$ then $x / t < W(R/t)$.
+\end{theorem}
+\leanref{\lean{exactDivRes_spec}, \lean{div_lt_divModuli}}
+
+\begin{theorem}
+For $T \ge 1$ and $x < W$,
+$\fn{divModRes}(R, \st{x}{R}, T) = \big(x \bmod T,\ \st{\lfloor x / T \rfloor}{R/T}\big)$. For
+$0 < x < W$, with $i = (x - 1) \bmod T + 1$ and $k = \lfloor (x - 1)/T \rfloor + 1$, so that
+$x = T (k - 1) + i$ and $1 \le i \le T$,
+\[
+  \fn{addressRes}(R, \st{x}{R}, T) = \big(i,\ \st{k}{R/T}\big).
+\]
+\end{theorem}
+\leanref{\lean{divModRes_spec}, \lean{addressRes_spec}}
+
+\begin{theorem}
+For any moduli $R$, a prime $p$ with $p^v \mid W(R)$ and $p^{v+1} \nmid W(R)$, and every $j$,
+\[
+  W\big(R, p^{v+1}, p^{v+2}, \dots, p^{v+j}\big) = p^j\, W(R).
+\]
+\end{theorem}
+\leanref{\lean{lcm_append_prime_powers}}
+
+\section{The formalization}\label{sec:formalization}
+
+The formalization is a Lean~4~\cite{lean4} project built against Mathlib~\cite{mathlib}, both
+at version \lean{v4.35.0}.
+All definitions of Section~\ref{sec:definitions} except the sech comb are in
+\lean{lean/Irreducibility/Defs.lean}, which does not import Mathlib; the sech comb needs real
+numbers and is defined in \lean{SechComb.lean}. Each group of results has its own file:
+
+\begin{center}
+\begin{tabular}{ll@{\qquad}ll}
+  T1 Counting & \lean{Residues.lean} & T5 Comparison & \lean{Compare.lean} \\
+  T1w Sech comb & \lean{SechComb.lean} & T5c Blocks & \lean{Blocks.lean} \\
+  T2 Euclid & \lean{Euclid.lean} & T6 Primality & \lean{Primality.lean} \\
+  T3 Mixed-radix system & \lean{Radices.lean} & T7 Interval atoms & \lean{Atoms.lean} \\
+  T4 Consecutive moduli & \lean{InitialModuli.lean} & T8 Arithmetic & \lean{Arithmetic.lean}
+\end{tabular}
+\end{center}
+
+\noindent
+\lean{lake build} completes with no \lean{sorry}, \lean{admit} or \lean{native_decide}, and the
+theorems depend only on the axioms \lean{propext}, \lean{Quot.sound} and
+\lean{Classical.choice}. The examples quoted above are checked by the kernel with
+\lean{decide}. To build:
+\begin{verbatim}
+cd lean
+lake exe cache get
+lake build
+\end{verbatim}
+
+\section{Use of AI}
+
+The construction (residues computed by counting, the mixed-radix system of arbitrary moduli
+built modulus by modulus, block representations, the residue read from a sech comb, the
+irreducibility of a modulus after other moduli, the atoms of an interval, arithmetic on
+residues) and the choice of the statements to be proved are the author's. Generative AI
+(Claude Opus 5.5, Anthropic, used through Claude Code) contributed in the following ways:
+\begin{itemize}
+  \item It wrote the Lean definitions from the author's description of the construction, and
+    the Lean proofs. The author checked the definitions against the construction; the
+    correctness of the proofs rests on the Lean kernel.
+  \item It wrote the statements in standard notation and drafted this text. The author set the
+    structure of the paper and the stated contributions.
+  \item It searched the literature and checked the identifiers of the references. The author
+    decided how the work is placed relative to that literature.
+\end{itemize}
+
+\begin{thebibliography}{9}
+
+\bibitem{didier}
+L.-S.~Didier, L.~Glandus, N.~El~Mrabet and J.-M.~Robert,
+\emph{Residue number system comparison revisited, a software perspective},
+2025 5th International Conference on Electrical, Computer and Energy Technologies (ICECET),
+2025; \href{https://arxiv.org/abs/2605.18415}{arXiv:2605.18415}.
+
+\bibitem{eberl-afp}
+M.~Eberl,
+\emph{Elementary facts about the distribution of primes},
+Archive of Formal Proofs, February 2019, ISSN 2150-914x,
+\url{https://isa-afp.org/entries/Prime_Distribution_Elementary.html}.
+
+\bibitem{garner}
+H.~L.~Garner,
+\emph{The residue number system},
+IRE Transactions on Electronic Computers EC-8 (1959), no.~2, 140--147,
+\href{https://doi.org/10.1109/TEC.1959.5219515}{doi:10.1109/TEC.1959.5219515}.
+
+\bibitem{mathlib}
+The mathlib Community,
+\emph{The Lean mathematical library},
+Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs
+(CPP 2020), 367--381,
+\href{https://doi.org/10.1145/3372885.3373824}{doi:10.1145/3372885.3373824}.
+
+\bibitem{lean4}
+L.~de~Moura and S.~Ullrich,
+\emph{The Lean 4 theorem prover and programming language},
+Automated Deduction -- CADE 28, Lecture Notes in Computer Science, 2021, 625--635,
+\href{https://doi.org/10.1007/978-3-030-79876-5_37}{doi:10.1007/978-3-030-79876-5\_37}.
+
+\bibitem{sundaram}
+S.~Sundaram and C.~N.~Hadjicostis,
+\emph{Fault-tolerant convolution via Chinese remainder codes constructed from non-coprime
+moduli},
+IEEE Transactions on Signal Processing 56 (2008), no.~9, 4244--4254,
+\href{https://doi.org/10.1109/TSP.2008.924636}{doi:10.1109/TSP.2008.924636}.
+
+\end{thebibliography}
+
+\end{document}

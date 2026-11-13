@@ -16,6 +16,9 @@ by a difference kept before.
   multiples in the interval, so does `q`.
 * `prime_mem_intervalAtoms`: an interval of length `L` gives every prime `p` with
   `2 * p ≤ L`.
+* `intervalDifference_of_dvd`: every divisor `d ≥ 2` of a difference is a difference.
+* `mem_intervalAtoms_iff_minimal`: the atoms are exactly the differences minimal under
+  divisibility, the atoms of the differences ordered by divisibility.
 -/
 
 namespace Irreducibility
@@ -135,5 +138,32 @@ public theorem prime_mem_intervalAtoms {lo hi p : Nat} (hp : p.Prime) (hL : lo +
     p ∈ intervalAtoms lo hi := by
   obtain ⟨hd, hlo, hlt, -⟩ := firstMultipleFrom_spec lo p hp.pos
   exact (mem_intervalAtoms lo hi p).2 ⟨hp, _, hlo, hd, by omega⟩
+
+/-- Every divisor `d ≥ 2` of a difference of an interval is a difference of it. -/
+public theorem intervalDifference_of_dvd {lo hi k d : Nat} (hk : IntervalDifference lo hi k)
+    (hd : 2 ≤ d) (hdk : d ∣ k) : IntervalDifference lo hi d := by
+  obtain ⟨hk2, a, ha, hka, hah⟩ := hk
+  have := Nat.le_of_dvd (by omega) hdk
+  exact ⟨hd, a, ha, hdk.trans hka, by omega⟩
+
+/-- The atoms of an interval are exactly its differences that no other difference divides. -/
+public theorem mem_intervalAtoms_iff_minimal (lo hi k : Nat) :
+    k ∈ intervalAtoms lo hi ↔
+      IntervalDifference lo hi k ∧ ∀ d, IntervalDifference lo hi d → d ∣ k → d = k := by
+  rw [mem_intervalAtoms]
+  constructor
+  · rintro ⟨hp, hex⟩
+    refine ⟨⟨hp.two_le, hex⟩, fun d ⟨hd2, _⟩ hdk => ?_⟩
+    rcases hp.eq_one_or_self_of_dvd d hdk with h | h
+    · omega
+    · exact h
+  · rintro ⟨⟨hk2, hex⟩, hmin⟩
+    refine ⟨?_, hex⟩
+    by_contra hnp
+    have hlt := (Nat.not_prime_iff_minFac_lt hk2).1 hnp
+    have hpp := Nat.minFac_prime (show k ≠ 1 by omega)
+    have := hmin _ (intervalDifference_of_dvd ⟨hk2, hex⟩ hpp.two_le (Nat.minFac_dvd k))
+      (Nat.minFac_dvd k)
+    omega
 
 end Irreducibility
