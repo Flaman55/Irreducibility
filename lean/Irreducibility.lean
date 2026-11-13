@@ -2,6 +2,7 @@ module
 
 public import Irreducibility.Defs
 public import Irreducibility.Ticking
+public import Irreducibility.Waves
 public import Irreducibility.Euclid
 public import Irreducibility.Drum
 public import Irreducibility.Bridge

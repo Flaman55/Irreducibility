@@ -12,7 +12,8 @@ License: Apache-2.0.
 
 ## The mechanism
 
-All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Mathlib.
+All definitions except the waves are in `lean/Irreducibility/Defs.lean`, which does not
+import Mathlib. The waves need real numbers and are defined in `Waves.lean`.
 
 | Definition | Meaning |
 |---|---|
@@ -48,12 +49,17 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | `exactDivOn rings states t` | exact division by `t`: on ring `m` with common part `g`, the state divided by `g` is stepped by `inverse (t / g)` around ring `m / g` |
 | `modR rings states T` | the phase on ring `T` read with `positionOn`, and the number of whole turns of `T`: the phase taken back on every ring, divided exactly by `T` |
 | `addressR rings states T` | the address `(k, i)` on ring `T`, phases counted `1, ..., T` |
+| `sech x` | hyperbolic secant, the shape of one tooth (`Waves.lean`) |
+| `comb s d t` | the comb of ring `d` at sharpness `s` and tick `t`: the `sech` teeth at the multiples of `d` around `t` (`Waves.lean`) |
+| `lastPeak s d t` | the last tick up to `t` at which the comb of ring `d` stands above `1 / 2` (`Waves.lean`) |
+| `waveRelation s a b` | the relation of ring `a` to ring `b` read from the waves: the ticks from the last peak of `b` up to tick `a` (`Waves.lean`) |
 
 ## What is proved
 
 | Step | File | Statement |
 |---|---|---|
 | T1 Ticking | `Ticking.lean` | `pos d t = t % d` for every `d`, `d = 0` included; hence `relation a b = a % b` |
+| T1w Waves | `Waves.lean` | for sharpness `s ≥ 3` and every ring `d ≥ 1`: `1 / 2 < comb s d t ↔ d ∣ t`; hence `waveRelation s a b = relation a b` for `b ≥ 1`; at `s = 2` the teeth of ring `2` merge and `waveRelation 2 3 2 ≠ relation 3 2` |
 | T2 Euclid | `Euclid.lean` | `commonPart a b = Nat.gcd a b` |
 | T3 Drum | `Drum.lean` | `turnOn radices c = radices.prod % c`; `commonPartWithTurn radices m = gcd (radices.prod) m`; the product of the level sizes of positive rings is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
 | T4 Consecutive rings | `Bridge.lean` | for `n ≥ 2`: `levelSize (ringsBelow n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (ringsBelow n) n ↔ Nat.Prime n`; `Real.log (levelSize (ringsBelow n) n) = Λ n` (von Mangoldt) |
@@ -81,6 +87,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
   Irreducibility/
     Defs.lean               the mechanism (no Mathlib)
     Ticking.lean            T1
+    Waves.lean              T1w
     Euclid.lean             T2
     Drum.lean               T3
     Bridge.lean             T4
