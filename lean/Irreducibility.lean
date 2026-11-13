@@ -3,6 +3,7 @@ module
 public import Irreducibility.Defs
 public import Irreducibility.Residues
 public import Irreducibility.SechComb
+public import Irreducibility.SechRatio
 public import Irreducibility.Euclid
 public import Irreducibility.Radices
 public import Irreducibility.InitialModuli
@@ -11,6 +12,7 @@ public import Irreducibility.Blocks
 public import Irreducibility.Primality
 public import Irreducibility.Atoms
 public import Irreducibility.Arithmetic
+public import Irreducibility.Multiplicative
 
 /-!
 # Irreducibility -- Lean 4 formalization

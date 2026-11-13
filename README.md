@@ -15,7 +15,8 @@ License: Apache-2.0.
 ## Definitions
 
 All definitions except the sech comb are in `lean/Irreducibility/Defs.lean`, which does not
-import Mathlib. The sech comb needs real numbers and is defined in `SechComb.lean`.
+import Mathlib. The sech comb needs real numbers and is defined in `SechComb.lean` and
+`SechRatio.lean`.
 
 A mixed-radix representation is a list of pairs `(digit, radix)`, least significant first.
 
@@ -23,6 +24,7 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 |---|---|
 | `countMod d t` | the residue of `t` modulo `d`, by counting: add `1` per step, reset to `0` on reaching `d` |
 | `resid a b` | the residue of `a` modulo `b` |
+| `mulCount g q t` | the residue of `g ^ t` modulo `q`, by multiplicative counting: start at `1`, multiply by `g` per step, take the residue modulo `q` |
 | `euclid a b` | the gcd of `a` and `b` by Euclid's algorithm on residues |
 | `prodMod radices c` | the residue modulo `c` of the product of `radices`, factor by factor, without forming the product |
 | `gcdProd radices m` | the gcd of `m` with the product of `radices`: `euclid (prodMod radices m) m` |
@@ -58,6 +60,7 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 | `sechComb s d t` | the sum of the `sech` pulses at scale `s` centred at the multiples of `d` around `t` (`SechComb.lean`) |
 | `lastPeak s d t` | the last step up to `t` at which `sechComb s d` exceeds `1 / 2` (`SechComb.lean`) |
 | `combResid s a b` | the residue of `a` modulo `b` read from the comb: the steps from the last peak for `b` up to `a` (`SechComb.lean`) |
+| `sechRatio x y` | `2 x y / (x ^ 2 + y ^ 2)`, a pulse of the comb written in `x = exp s` (`SechRatio.lean`) |
 
 ## What is proved
 
@@ -65,6 +68,7 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 |---|---|---|
 | T1 Residues | `Residues.lean` | `countMod d t = t % d` for every `d`, `d = 0` included; hence `resid a b = a % b` |
 | T1w Sech comb | `SechComb.lean` | for scale `s ≥ 3` and every modulus `d ≥ 1`: `1 / 2 < sechComb s d t ↔ d ∣ t`; hence `combResid s a b = resid a b` for `b ≥ 1`; at `s = 2` the pulses for `d = 2` overlap and `combResid 2 3 2 ≠ resid 3 2` |
+| T1w Ratio form | `SechRatio.lean` | `sech (a - b) = sechRatio (exp a) (exp b)`, so `sech (s (t - u)) = 2XY / (X² + Y²)` for `X = exp (s t)`, `Y = exp (s u)`; for `x, y > 0`: `sechRatio x y ≤ 1`, with equality iff `x = y`, so `sechRatio (x ^ n) y = 1 ↔ y = x ^ n`; the comb at scale `log x` is a sum of `sechRatio` of integer powers of `x`; `3 ≤ log x ↔ exp 3 ≤ x`, and for `x ≥ exp 3`: `1 / 2 < sechComb (log x) d t ↔ d ∣ t` |
 | T2 Euclid | `Euclid.lean` | `euclid a b = Nat.gcd a b` |
 | T3 Radices | `Radices.lean` | `prodMod radices c = radices.prod % c`; `gcdProd radices m = gcd (radices.prod) m`; the product of the radices of positive moduli is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
 | T4 Consecutive moduli | `InitialModuli.lean` | for `n ≥ 2`: `newRadix (initialModuli n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (initialModuli n) n ↔ Nat.Prime n`; `Real.log (newRadix (initialModuli n) n) = Λ n` (von Mangoldt) |
@@ -73,6 +77,7 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 | T6 Primality | `Primality.lean` | for positive moduli with `n` and `2` below the lcm: every answer of `isPrimeRes` on the residues `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the lcm |
 | T7 Interval atoms | `Atoms.lean` | `k ∈ intervalAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the interval is an atom; an interval of length `L` gives every prime `p` with `2 * p ≤ L`; the atoms are exactly the differences no other difference divides, the atoms of the differences ordered by divisibility |
 | T8 Arithmetic | `Arithmetic.lean` | for positive moduli and residues `x % m`, `y % m`: `addRes`, `mulRes`, `powRes` give the residues of `x + y`, `x * y`, `x ^ e`; `subRes` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the lcm); below the lcm, `addOverflow ↔ W ≤ x + y` and `subUnderflow ↔ x < y`; for `t ∣ x`, `exactDivRes` gives the residues of `x / t` on the moduli `m / gcd m t`, and `x / t` is below their lcm; `divModRes` gives `(x % T, residues of x / T)`; for `0 < x`, `addressRes` gives `i = (x - 1) % T + 1` and the residues of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the moduli `p ^ (v + 1), ..., p ^ (v + j)` multiply the lcm by `p ^ j` |
+| T9 Multiplicative counting | `Multiplicative.lean` | `mulCount g q t = g ^ t % q`; for a prime `q` and a primitive root `g` modulo `q`: `mulCount g q t = mulCount g q u ↔ countMod (q - 1) t = countMod (q - 1) u`; every residue `0 < r < q` equals `mulCount g q t` for some `t < q - 1`; `mulCount g q t = 1 ↔ (q - 1) ∣ t`, which for `s ≥ 3` is `1 / 2 < sechComb s (q - 1) t`; for `q` odd and `q ∤ N`, if `mulCount g q t = N % q`, then `N` is a square modulo `q` iff `t` is even |
 
 `FORMULAS.md` states the same results in standard notation, each with its Lean theorem;
 `Latex/irreducibility.pdf` is the paper, with the definitions and the results.
@@ -96,6 +101,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Defs.lean               the definitions (no Mathlib)
     Residues.lean           T1
     SechComb.lean           T1w
+    SechRatio.lean          T1w ratio form
     Euclid.lean             T2
     Radices.lean            T3
     InitialModuli.lean      T4
@@ -104,6 +110,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Primality.lean          T6
     Atoms.lean              T7
     Arithmetic.lean         T8
+    Multiplicative.lean     T9
 FORMULAS.md                 the proved statements in standard notation
 Latex/                      the paper: irreducibility.tex and irreducibility.pdf
 ```

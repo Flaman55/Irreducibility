@@ -39,8 +39,10 @@ $n = p^k$ and $1$ otherwise, so it receives its whole value exactly when $n$ is 
 logarithm of the radix is the von Mangoldt function. Numbers given only by their residues can
 be compared, tested for primality, added, subtracted, multiplied, raised to powers and divided
 exactly, with overflow and underflow detected; and the residue computed by counting is also
-read from a comb of hyperbolic-secant pulses from scale $3$ on. The work states several
-independent topics in one formal frame: remainders, Euclid's algorithm, the least common
+read from a comb of hyperbolic-secant pulses from scale $3$ on. Counting multiplicatively
+modulo a prime $q$ by a primitive root takes equal values at the same pairs of steps as
+counting modulo $q - 1$, and a nonzero residue is a square exactly when its step is even. The
+work states several independent topics in one formal frame: remainders, Euclid's algorithm, the least common
 multiple of consecutive integers and the von Mangoldt function, primes in intervals of
 consecutive integers, and residue number system arithmetic over arbitrary moduli. Every
 statement in this paper is a theorem of the accompanying Lean~4 / Mathlib formalization, which
@@ -82,8 +84,8 @@ contributes three points that the author did not find in the literature:
     the only number formed from residues is the residue of a block modulus, which is below that
     modulus (Section~\ref{sec:blocks}).
 \end{enumerate}
-In the same frame the work proves several known results (T1, T2, T4, T7) from the definitions
-rather than restating them, and adds the reading of residues from a sech comb (T1w).
+In the same frame the work proves several known results (T1, T2, T4, T7, T9) from the
+definitions rather than restating them, and adds the reading of residues from a sech comb (T1w).
 
 The comparison with earlier work reflects the literature known to the author at the time of
 writing; it states what the author did not find, not that no such work exists.
@@ -100,8 +102,11 @@ Residue number systems go back to Garner~\cite{garner}. Addition and multiplicat
 residue separately, while comparison, overflow detection and division need a positional
 representation of the number, usually through mixed-radix conversion; a recent method and an
 account of the earlier ones are given in~\cite{didier}. Moduli that are not coprime are used in
-error-correcting residue codes~\cite{sundaram}. For the reading of residues from a sech comb
-(T1w) the author found no earlier work.
+error-correcting residue codes~\cite{sundaram}. T9 restates in terms of counting two classical
+facts: for a primitive root $g$ modulo a prime $q$, $t \mapsto g^t \bmod q$ maps
+$\mathbb{Z}/(q-1)$ onto the nonzero residues, and by Euler's criterion (in Mathlib as
+\lean{ZMod.euler_criterion}) a nonzero residue $g^t$ is a square exactly when $t$ is even.
+For the reading of residues from a sech comb (T1w) the author found no earlier work.
 
 Every theorem below is stated with the name of the Lean theorem that proves it. Hypotheses are
 given in full; nothing here is weaker or stronger than the Lean statement. The formalization
@@ -327,6 +332,26 @@ backwards from $a$ to the last peak for $b$.
 \end{definition}
 \leanref{\lean{sech}, \lean{sechComb}, \lean{lastPeak}, \lean{combResid}}
 
+\begin{definition}
+For real $x, y$,
+\[
+  \fn{sechRatio}(x, y) = \frac{2xy}{x^2 + y^2}.
+\]
+\end{definition}
+\leanref{\lean{sechRatio}}
+
+\subsection{Multiplicative counting}
+
+\begin{definition}
+The residue of $g^t$ modulo $q$ is computed by multiplicative counting: start at $1$, multiply
+by $g$ per step and take the residue modulo $q$,
+\[
+  \fn{mulCount}(g, q, 0) = \fn{resid}(1, q), \qquad
+  \fn{mulCount}(g, q, t + 1) = \fn{resid}\big(\fn{mulCount}(g, q, t) \cdot g,\ q\big).
+\]
+\end{definition}
+\leanref{\lean{mulCount}}
+
 \section{Results}\label{sec:results}
 
 \subsection*{T1 Counting}
@@ -346,6 +371,28 @@ Hence for $s \ge 3$ and $b \ge 1$, $\fn{combResid}_s(a, b) = \fn{resid}(a, b)$. 
 the reading fails: $\fn{combResid}_2(3, 2) = 0 \ne 1 = \fn{resid}(3, 2)$.
 \end{theorem}
 \leanref{\lean{one_half_lt_sechComb_iff}, \lean{combResid_eq}, \lean{combResid_two_ne}}
+
+\begin{theorem}
+For all real $a, b$, $\fn{sech}(a - b) = \fn{sechRatio}(e^a, e^b)$; hence, with $X = e^{st}$
+and $Y = e^{su}$,
+\[
+  \fn{sech}\big(s(t - u)\big) = \frac{2XY}{X^2 + Y^2}.
+\]
+For $x, y > 0$, $\fn{sechRatio}(x, y) \le 1$, with equality exactly when $x = y$; in
+particular $2x^n y / (x^{2n} + y^2) = 1$ exactly when $y = x^n$.
+\end{theorem}
+\leanref{\lean{sech_sub_eq_sechRatio}, \lean{sech_mul_sub_eq_sechRatio}, \lean{sechRatio_le_one},
+\lean{sechRatio_eq_one_iff}, \lean{sechRatio_pow_eq_one_iff}}
+
+\begin{theorem}
+For $x > 0$ the comb at scale $\ln x$ is a sum of ratios of integer powers of $x$,
+\[
+  C_{\ln x, d}(t) = \sum_{i=-1}^{2} \fn{sechRatio}\big(x^t,\ x^{d(\lfloor t/d \rfloor + i)}\big),
+\]
+and $3 \le \ln x$ exactly when $e^3 \le x$. Hence for $x \ge e^3$, every modulus $d \ge 1$
+and every step $t$, $C_{\ln x, d}(t) > \frac12 \iff d \mid t$.
+\end{theorem}
+\leanref{\lean{sechComb_log_eq}, \lean{three_le_log_iff}, \lean{one_half_lt_sechComb_log_iff}}
 
 \subsection*{T2 Euclid}
 \begin{theorem}
@@ -534,21 +581,52 @@ For any moduli $R$, a prime $p$ with $p^v \mid W(R)$ and $p^{v+1} \nmid W(R)$, a
 \end{theorem}
 \leanref{\lean{lcm_append_prime_powers}}
 
+\subsection*{T9 Multiplicative counting}
+\begin{theorem}
+For all $g, q, t$, $\fn{mulCount}(g, q, t) = g^t \bmod q$.
+\end{theorem}
+\leanref{\lean{mulCount_eq}}
+
+In the rest of this subsection $q$ is prime and $g$ is a primitive root modulo $q$, that is,
+the order of $g$ in $\mathbb{Z}/q$ is $q - 1$.
+
+\begin{theorem}
+The multiplicative counter modulo $q$ and the additive counter modulo $q - 1$ take equal values
+at the same pairs of steps:
+\[
+  \fn{mulCount}(g, q, t) = \fn{mulCount}(g, q, u) \iff
+  \fn{countMod}(q - 1, t) = \fn{countMod}(q - 1, u),
+\]
+and every residue $0 < r < q$ equals $\fn{mulCount}(g, q, t)$ for some $t < q - 1$. The
+counter returns to $1$ exactly at the multiples of $q - 1$: $\fn{mulCount}(g, q, t) = 1 \iff
+(q - 1) \mid t$, which for scale $s \ge 3$ is $C_{s, q-1}(t) > \frac12$.
+\end{theorem}
+\leanref{\lean{mulCount_eq_mulCount_iff}, \lean{exists_mulCount_eq}, \lean{mulCount_eq_one_iff},
+\lean{one_half_lt_sechComb_iff_mulCount_eq_one}}
+
+\begin{theorem}
+Let $q \ne 2$, $q \nmid N$, and $\fn{mulCount}(g, q, t) = N \bmod q$. Then $N$ is a square
+modulo $q$ exactly when $t$ is even.
+\end{theorem}
+\leanref{\lean{isSquare_iff_even}}
+
 \section{The formalization}\label{sec:formalization}
 
 The formalization is a Lean~4~\cite{lean4} project built against Mathlib~\cite{mathlib}, both
 at version \lean{v4.35.0}.
 All definitions of Section~\ref{sec:definitions} except the sech comb are in
 \lean{lean/Irreducibility/Defs.lean}, which does not import Mathlib; the sech comb needs real
-numbers and is defined in \lean{SechComb.lean}. Each group of results has its own file:
+numbers and is defined in \lean{SechComb.lean} and \lean{SechRatio.lean}. Each group of
+results has its own file:
 
 \begin{center}
 \begin{tabular}{ll@{\qquad}ll}
   T1 Counting & \lean{Residues.lean} & T5 Comparison & \lean{Compare.lean} \\
   T1w Sech comb & \lean{SechComb.lean} & T5c Blocks & \lean{Blocks.lean} \\
-  T2 Euclid & \lean{Euclid.lean} & T6 Primality & \lean{Primality.lean} \\
-  T3 Mixed-radix system & \lean{Radices.lean} & T7 Interval atoms & \lean{Atoms.lean} \\
-  T4 Consecutive moduli & \lean{InitialModuli.lean} & T8 Arithmetic & \lean{Arithmetic.lean}
+  T1w ratio form & \lean{SechRatio.lean} & T6 Primality & \lean{Primality.lean} \\
+  T2 Euclid & \lean{Euclid.lean} & T7 Interval atoms & \lean{Atoms.lean} \\
+  T3 Mixed-radix system & \lean{Radices.lean} & T8 Arithmetic & \lean{Arithmetic.lean} \\
+  T4 Consecutive moduli & \lean{InitialModuli.lean} & T9 Multiplicative & \lean{Multiplicative.lean}
 \end{tabular}
 \end{center}
 

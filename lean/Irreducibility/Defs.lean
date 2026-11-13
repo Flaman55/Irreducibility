@@ -9,6 +9,8 @@ No definition refers to primes, to factorization, or to a number assembled from 
 * `countMod d t` -- the residue of `t` modulo `d`, obtained by counting alone: add `1` per
   step and reset to `0` on reaching `d`.
 * `resid a b` -- the residue of `a` modulo `b`, that is `countMod b a`.
+* `mulCount g q t` -- the residue of `g ^ t` modulo `q`, obtained by multiplicative counting:
+  start at `1`, multiply by `g` per step and take the residue modulo `q`.
 * `euclid a b` -- Euclid's algorithm computed with `resid` only.
 * `prodMod radices c` -- the residue modulo `c` of the product of `radices`, computed factor
   by factor without forming the product.
@@ -38,6 +40,12 @@ namespace Irreducibility
 
 /-- The residue of `a` modulo `b`. -/
 @[expose] public def resid (a b : Nat) : Nat := countMod b a
+
+/-- The residue of `g ^ t` modulo `q` by multiplicative counting: start at `1`, multiply by `g`
+per step and take the residue modulo `q`. -/
+@[expose] public def mulCount (g q : Nat) : Nat → Nat
+  | 0 => resid 1 q
+  | t + 1 => resid (mulCount g q t * g) q
 
 /-- Euclid's algorithm on residues, with a fuel bound; `euclid` supplies enough fuel. -/
 @[expose] public def euclidAux : Nat → Nat → Nat → Nat
