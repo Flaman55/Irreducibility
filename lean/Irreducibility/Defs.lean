@@ -11,8 +11,10 @@ No definition refers to primes, to factorization, or to a number built from the 
 * `relation a b` -- where ring `b` stands when ring `a` completes its first turn, that is
   after `a` ticks.
 * `commonPart a b` -- Euclid's procedure run on relations only.
+* `turnOn radices c` -- where one whole turn of a drum with level sizes `radices` stands on
+  ring `c`, read level by level without forming the turn.
 * `commonPartWithTurn radices m` -- the part ring `m` shares with the turn of a drum whose
-  levels have sizes `radices`, computed level by level without forming the turn.
+  levels have sizes `radices`: `commonPart` of where the turn stands on ring `m` and `m`.
 * `levels rings` -- the drum built from `rings` in order: each ring contributes a level of
   size `m / commonPartWithTurn (levels so far) m`.
 * `IrreducibleAfter before m` -- ring `m` contributes its whole period: nothing of it is
@@ -38,18 +40,15 @@ a whole turn. -/
 /-- The common part of rings `a` and `b`: Euclid's procedure on relations. -/
 @[expose] public def commonPart (a b : Nat) : Nat := commonPartAux (b + 1) a b
 
-/-- Absorb one level of size `r` into the pair (part found so far `g`, rest of the ring
-`rest`): repeatedly take the common part `t` of `r` and `rest`, move it into `g`. -/
-@[expose] public def absorb : Nat → Nat → Nat → Nat → Nat × Nat
-  | 0, _, g, rest => (g, rest)
-  | fuel + 1, r, g, rest =>
-    if commonPart r rest ≤ 1 then (g, rest)
-    else absorb fuel (r / commonPart r rest) (g * commonPart r rest) (rest / commonPart r rest)
+/-- Where one whole turn of a drum with level sizes `radices` stands on ring `c`. -/
+@[expose] public def turnOn : List Nat → Nat → Nat
+  | [], c => 1 % c
+  | r :: rs, c => (relation r c * turnOn rs c) % c
 
-/-- The part ring `m` shares with the turn of a drum with level sizes `radices`, computed
-level by level; the turn itself is never formed. -/
+/-- The part ring `m` shares with the turn of a drum with level sizes `radices`: Euclid's
+procedure on ring `m` and where the turn stands on it; the turn itself is never formed. -/
 @[expose] public def commonPartWithTurn (radices : List Nat) (m : Nat) : Nat :=
-  (radices.foldl (fun acc r => absorb (m + 1) r acc.1 acc.2) (1, m)).1
+  commonPart (turnOn radices m) m
 
 /-- The level sizes of the drum built from `rings` in order. -/
 @[expose] public def levels (rings : List Nat) : List Nat :=
@@ -75,11 +74,6 @@ contributes its digit plus its size's relation to `c` times what the levels abov
 @[expose] public def positionOn : List (Nat × Nat) → Nat → Nat
   | [], _ => 0
   | (d, r) :: rest, c => (d + relation r c * positionOn rest c) % c
-
-/-- Where one whole turn of a drum with level sizes `radices` stands on ring `c`. -/
-@[expose] public def turnOn : List Nat → Nat → Nat
-  | [], c => 1 % c
-  | r :: rs, c => (relation r c * turnOn rs c) % c
 
 /-- Step `step` teeth at a time around ring `b` from `pos`, at most `fuel` more steps; the
 number of steps taken when the ring first stands at `1`. -/

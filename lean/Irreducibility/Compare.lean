@@ -39,13 +39,6 @@ public theorem positionOn_eq (ds : List (Nat × Nat)) (c : Nat) :
     simp only [positionOn, value, ih, relation_eq_mod]
     rw [Nat.add_mod, Nat.mul_mod, Nat.mod_mod, Nat.mod_mod, ← Nat.mul_mod, ← Nat.add_mod]
 
-public theorem turnOn_eq (rs : List Nat) (c : Nat) : turnOn rs c = rs.prod % c := by
-  induction rs with
-  | nil => simp [turnOn]
-  | cons r rs ih =>
-    simp only [turnOn, ih, relation_eq_mod, List.prod_cons]
-    exact (Nat.mul_mod r rs.prod c).symm
-
 theorem inverseAux_spec (step b : Nat) :
     ∀ fuel t pos, pos = t * step % b → (∃ x, t < x ∧ x ≤ t + fuel ∧ x * step % b = 1) →
       inverseAux step b fuel t pos * step % b = 1
@@ -193,7 +186,7 @@ theorem digitStep_spec {n m : Nat} {acc : List (Nat × Nat)} (hm : 0 < m) (hacc 
   obtain ⟨hyg, hq, hq0, hdig, hsum⟩ := digit_arith (n := n) hm hL
   refine ⟨n % ((acc.map Prod.snd).prod * (m / Nat.gcd (acc.map Prod.snd).prod m)) /
     (acc.map Prod.snd).prod, ?_, ?_, ?_⟩
-  · simp only [digitStep, commonPartWithTurn_eq _ _ hm, positionOn_eq, turnOn_eq, hval]
+  · simp only [digitStep, commonPartWithTurn_eq, positionOn_eq, turnOn_eq, hval]
     simp only [hyg, ↓reduceIte]
     split_ifs with h1r
     · rw [hdig h1r]
@@ -202,9 +195,9 @@ theorem digitStep_spec {n m : Nat} {acc : List (Nat × Nat)} (hm : 0 < m) (hacc 
     rcases List.mem_append.1 hp with hp | hp
     · exact hlt p hp
     · rw [List.mem_singleton] at hp
-      rw [hp, commonPartWithTurn_eq _ _ hm]
+      rw [hp, commonPartWithTurn_eq]
       exact hq
-  · rw [value_append, hval, commonPartWithTurn_eq _ _ hm]
+  · rw [value_append, hval, commonPartWithTurn_eq]
     simp only [List.map_append, List.map_cons, List.map_nil, List.prod_append, List.prod_cons,
       List.prod_nil, Nat.mul_one]
     exact hsum
