@@ -18,8 +18,11 @@ No definition refers to primes, to factorization, or to a number assembled from 
   radix `m / gcdProd (radices so far) m`.
 * `IrreducibleAfter before m` -- modulus `m` receives the radix `m`: no factor of it is
   covered by the moduli before it.
+* `IntervalDifference lo hi k` -- the interval `lo, ..., hi` contains `a` and `a + k` with
+  `k ∣ a`, for `2 ≤ k`.
 * `intervalAtoms lo hi` -- the differences `k` read from pairs of multiples of `k` in the
-  interval `lo, ..., hi` that are divisible by no smaller difference kept before.
+  interval `lo, ..., hi` that are divisible by no smaller difference kept before; they are the
+  atoms of the differences ordered by divisibility (T7).
 * `addRes`, `subRes`, `mulRes`, `powRes`, `exactDivRes`, `divModRes`, `addressRes` --
   arithmetic on residue vectors, modulus by modulus; `addOverflow` and `subUnderflow` detect
   a result outside `[0, lcm)` by comparing residue vectors.
@@ -239,6 +242,11 @@ divisors from `2` on. -/
 
 An interval is the run of consecutive integers `lo, ..., hi`. A difference `k` is read from two
 elements `a` and `a + k` of the interval with `k ∣ a`: then `k` divides both. -/
+
+/-- `k` is a difference of the interval `lo, ..., hi`: `2 ≤ k` and the interval contains `a`
+and `a + k` with `k ∣ a`. -/
+@[expose] public def IntervalDifference (lo hi k : Nat) : Prop :=
+  2 ≤ k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi
 
 /-- The least multiple of `k` that is at least `lo`, from one residue. -/
 @[expose] public def firstMultipleFrom (lo k : Nat) : Nat :=

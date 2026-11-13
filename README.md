@@ -42,6 +42,7 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 | `flatten x` | one list of moduli for blocks and quotient blocks: quotient block `c` with residue `k` receives `k * L + r` modulo `c` |
 | `compareBlocks x y` | flatten both numbers, extend both to the union of their moduli, compare with `compareRes` |
 | `isPrimeRes fuel moduli residues` | trial division on residues: divisors `m = 2, 3, ...` are compared with the number through their residue vectors, the residue of the number modulo `m` comes from `evalMod`; `true` when `m` equals the number or `m * m` exceeds it, `false` when `m` divides it, `none` when the fuel runs out |
+| `IntervalDifference lo hi k` | `2 ≤ k` and the interval `lo, ..., hi` contains `a` and `a + k` with `k ∣ a` |
 | `firstMultipleFrom lo k` | the least multiple of `k` that is at least `lo`, from one residue |
 | `atomStep lo hi atoms k` | keep `k` when the interval `lo, ..., hi` contains `a` and `a + k` with `k ∣ a`, and no atom kept before divides `k` |
 | `intervalAtoms lo hi` | the differences `2, ..., hi - lo` in order, each kept by `atomStep` |
@@ -70,10 +71,11 @@ A mixed-radix representation is a list of pairs `(digit, radix)`, least signific
 | T5 Compare | `Compare.lean` | for positive moduli and residues `n % m`: `toMixedRadix` returns the mixed-radix digits of `n` modulo the lcm, on the radices `radices moduli`; `evalMod ds c = eval ds % c`; for `n, n'` below the lcm, `compareRes moduli (residues of n) (residues of n') = some (compare n n')` |
 | T5c Blocks | `Blocks.lean` | a block of positive moduli with residues `n % m` is one modulus `lcm` with residue `n % lcm`; `flatten` gives every modulus `c` of the blocks and quotient blocks the residue `n % c`; below the lcm, `baseExtend` gives `n % c` on any modulus `c`; for `n` below the lcm of all moduli of its blocking and `n'` below that of its own, `compareBlocks (BlockRep.of n D K) (BlockRep.of n' D' K') = some (compare n n')` |
 | T6 Primality | `Primality.lean` | for positive moduli with `n` and `2` below the lcm: every answer of `isPrimeRes` on the residues `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the lcm |
-| T7 Interval atoms | `Atoms.lean` | `k ∈ intervalAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the interval is an atom; an interval of length `L` gives every prime `p` with `2 * p ≤ L` |
+| T7 Interval atoms | `Atoms.lean` | `k ∈ intervalAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the interval is an atom; an interval of length `L` gives every prime `p` with `2 * p ≤ L`; the atoms are exactly the differences no other difference divides, the atoms of the differences ordered by divisibility |
 | T8 Arithmetic | `Arithmetic.lean` | for positive moduli and residues `x % m`, `y % m`: `addRes`, `mulRes`, `powRes` give the residues of `x + y`, `x * y`, `x ^ e`; `subRes` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the lcm); below the lcm, `addOverflow ↔ W ≤ x + y` and `subUnderflow ↔ x < y`; for `t ∣ x`, `exactDivRes` gives the residues of `x / t` on the moduli `m / gcd m t`, and `x / t` is below their lcm; `divModRes` gives `(x % T, residues of x / T)`; for `0 < x`, `addressRes` gives `i = (x - 1) % T + 1` and the residues of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the moduli `p ^ (v + 1), ..., p ^ (v + j)` multiply the lcm by `p ^ j` |
 
-`FORMULAS.md` states the same results in standard notation, each with its Lean theorem.
+`FORMULAS.md` states the same results in standard notation, each with its Lean theorem;
+`Latex/irreducibility.pdf` is the paper, with the definitions and the results.
 
 T3 holds for any list of positive moduli, in any order. T4 is the special case of the
 consecutive moduli `2, ..., n - 1`.
@@ -103,7 +105,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Atoms.lean              T7
     Arithmetic.lean         T8
 FORMULAS.md                 the proved statements in standard notation
-Latex/                      paper sources (in preparation)
+Latex/                      the paper: irreducibility.tex and irreducibility.pdf
 ```
 
 ## Build

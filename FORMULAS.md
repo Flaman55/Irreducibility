@@ -194,6 +194,16 @@ $$lo + 2p \le hi + 1 \implies p \in \mathrm{intervalAtoms}(lo, hi)$$
 
 (`prime_mem_intervalAtoms`)
 
+Write $\mathrm{Diff}(lo, hi) = \{k \ge 2 : \exists a:\ lo \le a,\ k \mid a,\ a + k \le hi\}$
+(`IntervalDifference`). Every divisor $d \ge 2$ of an element of $\mathrm{Diff}(lo, hi)$ is in
+$\mathrm{Diff}(lo, hi)$ (`intervalDifference_of_dvd`), and the atoms are its minimal elements
+under divisibility:
+
+$$k \in \mathrm{intervalAtoms}(lo, hi) \iff k \in \mathrm{Diff}(lo, hi) \ \wedge
+\forall d \in \mathrm{Diff}(lo, hi):\ d \mid k \implies d = k$$
+
+(`mem_intervalAtoms_iff_minimal`)
+
 ## T8 Arithmetic (`Arithmetic.lean`)
 
 Write $W = W(R)$. For any moduli $R$ and all $x, y, e$:
