@@ -2,7 +2,7 @@ module
 
 public import Irreducibility.Defs
 public import Irreducibility.Residues
-public import Irreducibility.Waves
+public import Irreducibility.SechComb
 public import Irreducibility.Euclid
 public import Irreducibility.Radices
 public import Irreducibility.InitialModuli

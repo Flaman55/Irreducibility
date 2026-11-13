@@ -12,8 +12,8 @@ The residue of `a` modulo `b` is read backwards from `a` to the last peak for `b
 
 * `one_half_lt_sechComb_iff`: from scale `3` on, `t` is a peak for `d` exactly when `d ∣ t`,
   for every modulus `d`.
-* `waveResid_eq`: from scale `3` on, the residue read from the comb is `resid a b`.
-* `waveResid_two_ne`: at scale `2` the pulses for modulus `2` overlap and the reading
+* `combResid_eq`: from scale `3` on, the residue read from the comb is `resid a b`.
+* `combResid_two_ne`: at scale `2` the pulses for modulus `2` overlap and the reading
   fails.
 -/
 
@@ -35,7 +35,7 @@ namespace Irreducibility
 
 /-- The residue of `a` modulo `b` read from the comb: the steps from the last peak for `b`
 up to `a`. -/
-@[expose] public noncomputable def waveResid (s : ℝ) (a b : ℕ) : ℕ := a - lastPeak s b a
+@[expose] public noncomputable def combResid (s : ℝ) (a b : ℕ) : ℕ := a - lastPeak s b a
 
 theorem sech_pos (x : ℝ) : 0 < sech x := inv_pos.2 (Real.cosh_pos x)
 
@@ -116,9 +116,9 @@ theorem lastPeak_eq {s : ℝ} (hs : 3 ≤ s) {d : ℕ} (hd : 0 < d) :
 
 /-- From scale `3` on, the residue read from the comb is the residue computed by
 counting. -/
-public theorem waveResid_eq {s : ℝ} (hs : 3 ≤ s) (a : ℕ) {b : ℕ} (hb : 0 < b) :
-    waveResid s a b = resid a b := by
-  rw [waveResid, lastPeak_eq hs hb, resid_eq_mod]
+public theorem combResid_eq {s : ℝ} (hs : 3 ≤ s) (a : ℕ) {b : ℕ} (hb : 0 < b) :
+    combResid s a b = resid a b := by
+  rw [combResid, lastPeak_eq hs hb, resid_eq_mod]
   have := Nat.div_add_mod a b
   omega
 
@@ -148,11 +148,11 @@ theorem one_half_lt_sechComb_two_two_odd (t : ℕ) (ht : t % 2 = 1) : 1 / 2 < se
 
 /-- At scale `2` the pulses for modulus `2` overlap: the comb reading of `3` modulo `2`
 gives `0`, while counting gives `1`. -/
-public theorem waveResid_two_ne : waveResid 2 3 2 ≠ resid 3 2 := by
+public theorem combResid_two_ne : combResid 2 3 2 ≠ resid 3 2 := by
   have h : lastPeak 2 2 3 = 3 := by
     simp only [lastPeak]
     exact ite_eq_left_iff.2 fun h => absurd (one_half_lt_sechComb_two_two_odd 3 rfl) h
-  rw [waveResid, h, resid_eq_mod]
+  rw [combResid, h, resid_eq_mod]
   decide
 
 end Irreducibility

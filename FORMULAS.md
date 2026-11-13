@@ -28,7 +28,7 @@ $$\mathrm{resid}(a, b) = a \bmod b$$
 
 (`resid_eq_mod`)
 
-## T1w Sech comb (`Waves.lean`)
+## T1w Sech comb (`SechComb.lean`)
 
 $$\mathrm{sech}(x) = \frac{1}{\cosh(x)}, \qquad
 C_{s,d}(t) = \sum_{i=-1}^{2} \mathrm{sech}\Big(s \big(t - d (\lfloor t/d \rfloor + i)\big)\Big)$$
@@ -41,12 +41,12 @@ $$C_{s,d}(t) > \tfrac{1}{2} \iff d \mid t$$
 
 Hence the last peak for $d$ up to $t$ is $d \lfloor t/d \rfloor$, and for $b \ge 1$:
 
-$$\mathrm{waveResid}_s(a, b) = a - b \lfloor a/b \rfloor = \mathrm{resid}(a, b)$$
+$$\mathrm{combResid}_s(a, b) = a - b \lfloor a/b \rfloor = \mathrm{resid}(a, b)$$
 
-(`waveResid_eq`)
+(`combResid_eq`)
 
-At $s = 2$ the reading fails: $\mathrm{waveResid}_2(3, 2) = 0 \ne 1 = \mathrm{resid}(3, 2)$
-(`waveResid_two_ne`).
+At $s = 2$ the reading fails: $\mathrm{combResid}_2(3, 2) = 0 \ne 1 = \mathrm{resid}(3, 2)$
+(`combResid_two_ne`).
 
 ## T2 Euclid (`Euclid.lean`)
 
