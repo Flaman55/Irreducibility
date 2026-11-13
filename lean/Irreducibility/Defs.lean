@@ -19,6 +19,8 @@ No definition refers to primes, to factorization, or to a number built from the 
   size `m / commonPartWithTurn (levels so far) m`.
 * `IrreducibleAfter before m` -- ring `m` contributes its whole period: nothing of it is
   carried by the rings before it.
+* `windowAtoms lo hi` -- the steps read from pairs of rings of the window `lo, ..., hi` that
+  stand at `0` on no smaller step kept before.
 -/
 
 namespace Irreducibility
@@ -224,6 +226,28 @@ from `2` on. -/
   | some ds => primeOnAux rings states ds fuel 2
   | none => none
 
+/-! ## Atoms of a window
+
+A window is the run of consecutive rings `lo, ..., hi`. A step `k` is read from two window
+rings `a` and `a + k` with ring `a` at `0` on ring `k`: their difference `k` is a part
+they share. -/
+
+/-- The first ring from `lo` on that stands at `0` on ring `k`, from one relation. -/
+@[expose] public def firstMultipleFrom (lo k : Nat) : Nat :=
+  if relation lo k = 0 then lo else lo + (k - relation lo k)
+
+/-- Take step `k` into the atoms found so far when the window `lo, ..., hi` holds two rings
+`a` and `a + k` with `a` at `0` on ring `k`, and `k` stands at `0` on none of those atoms. -/
+@[expose] public def atomStep (lo hi : Nat) (atoms : List Nat) (k : Nat) : List Nat :=
+  if firstMultipleFrom lo k + k ≤ hi ∧ atoms.all (fun p => relation k p != 0) = true then
+    atoms ++ [k]
+  else atoms
+
+/-- The atoms of the window `lo, ..., hi`: the steps `2, ..., hi - lo` in order, each kept
+by `atomStep`. -/
+@[expose] public def windowAtoms (lo hi : Nat) : List Nat :=
+  (ringsBelow (hi - lo + 1)).foldl (atomStep lo hi) []
+
 /-! ## Checks by evaluation (kernel `decide`, no extra axioms) -/
 
 example : relation 17 5 = 2 := by decide
@@ -272,5 +296,14 @@ example : primeOn 20 [6, 4, 9, 5] [5, 1, 2, 3] = none := by decide
 set_option maxRecDepth 20000 in
 example : primeOn 200 [6, 4, 9, 5] [5, 1, 2, 3] = some true := by decide
 example : primeOn 20 [2, 4] [1, 2] = none := by decide
+
+set_option maxRecDepth 20000 in
+example : windowAtoms 50 60 = [2, 3, 5] := by decide
+set_option maxRecDepth 20000 in
+example : windowAtoms 100 130 = [2, 3, 5, 7, 11, 13, 17] := by decide
+set_option maxRecDepth 20000 in
+example : windowAtoms 2 60 = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] := by decide
+example : windowAtoms 7 7 = [] := by decide
+example : windowAtoms 9 3 = [] := by decide
 
 end Irreducibility
