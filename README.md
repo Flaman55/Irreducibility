@@ -1,85 +1,89 @@
 # Irreducibility
 
-A Lean 4 / Mathlib formalization of a ring (gear) mechanism. Rings of arbitrary periods,
-composite periods included, are combined into a drum level by level. Relations between
-rings are read by ticking, and common parts by Euclid's procedure run on those relations.
-No definition refers to primes, to factorization, or to a number built from the ring
-states. Primes appear only in the theorems that describe what the mechanism produces.
+A Lean 4 / Mathlib formalization of a residue number system over arbitrary moduli, composite
+and not pairwise coprime moduli included. Residues are computed by counting, gcds by
+Euclid's algorithm on residues, and the moduli are combined into a mixed-radix system in
+which each modulus receives the part of it not covered by the moduli before it. Comparison,
+overflow detection, exact division, base extension and primality testing work on residues.
+No definition refers to primes, to factorization, or to a number assembled from residues.
+Primes appear only in the theorems about the results.
 
 Lean/Mathlib `v4.35.0`. `lake build` is green with no `sorry`, `admit` or `native_decide`.
 The only axioms used are `propext`, `Quot.sound` and `Classical.choice`.
 License: Apache-2.0.
 
-## The mechanism
+## Definitions
 
-All definitions except the waves are in `lean/Irreducibility/Defs.lean`, which does not
-import Mathlib. The waves need real numbers and are defined in `Waves.lean`.
+All definitions except the sech comb are in `lean/Irreducibility/Defs.lean`, which does not
+import Mathlib. The sech comb needs real numbers and is defined in `Waves.lean`.
+
+A mixed-radix representation is a list of pairs `(digit, radix)`, least significant first.
 
 | Definition | Meaning |
 |---|---|
-| `pos d t` | position of ring `d` after `t` ticks, by ticking alone |
-| `relation a b` | where ring `b` stands when ring `a` completes its first turn |
-| `commonPart a b` | Euclid's procedure run on relations |
-| `turnOn radices c` | where one whole turn of a drum stands on ring `c`, read level by level without forming the turn |
-| `commonPartWithTurn radices m` | the part ring `m` shares with the turn of a drum: `commonPart (turnOn radices m) m` |
-| `levels rings` | the drum built from `rings` in order: each ring adds a level of size `m / commonPartWithTurn (levels so far) m` |
-| `levelSize before m` | the level ring `m` gets on top of the drum built from `before` |
-| `IrreducibleAfter before m` | ring `m` contributes its whole period: `levelSize before m = m` |
-| `ringsBelow n` | the consecutive rings `2, 3, ..., n - 1` |
-| `positionOn ds c` | where a drum position (levels `(digit, size)`) stands on ring `c`, read from the top |
-| `inverse a b` | the number of `a`-steps around ring `b` that land on `1` |
-| `digitsOf rings states` | the drum position given by ring states, built ring by ring; `none` for contradictory states |
-| `compareOn rings xs ys` | compare two sets of states on the same rings, digit by digit from the top |
-| `value ds` | the position a drum position stands for on the turn of its levels |
-| `packRing members states` | a pack as one ring: period = turn of the members' drum, state = `value` of their drum position |
-| `drumOfPacks packs states` | the pack rings and pack states of a drum of packs |
-| `Packed` | a number given by member states of packs, plus member states of rotation packs for the number of whole turns of the drum of packs |
-| `extend rings states target` | carry a drum position onto other rings with `positionOn` |
-| `flatten x` | one drum of packs and rotation packs: rotation pack `c` in state `k` stands at `k` turns plus the position on `c` |
-| `comparePacked x y` | flatten both numbers, carry both onto the union of their rings, compare with `compareOn` |
-| `primeOn fuel rings states` | try rings `m = 2, 3, ...` against a number given on a drum: `m` and `m * m` are compared with it through their states on the drum's rings (read from relations), the number's state on ring `m` through `positionOn`; `true` when `m` reaches the number or `m * m` passes it, `false` when ring `m` stands at `0`, `none` when the fuel runs out |
-| `firstMultipleFrom lo k` | the first ring from `lo` on that stands at `0` on ring `k`, from one relation |
-| `atomStep lo hi atoms k` | keep step `k` when the window `lo, ..., hi` holds rings `a` and `a + k` with `a` at `0` on ring `k`, and `k` stands at `0` on no atom kept before |
-| `windowAtoms lo hi` | the steps `2, ..., hi - lo` in order, each kept by `atomStep` |
-| `ringwise f rings xs ys` | apply `f m a b` on each ring `m` to its states `a` and `b` |
-| `addOn`, `subOn`, `mulOn` | sum, difference (taken back around each ring) and product of two numbers, ring by ring |
-| `addWraps`, `subWraps` | a sum passes the end of the turn when its states compare below the first term's; a difference passes below `0` when the first term compares below the second |
-| `powOn rings xs e` | `e` products ring by ring, starting from the states of `1` |
-| `exactDivRings rings t` | the rings `m / commonPart m t` that carry the quotient by `t` |
-| `exactDivOn rings states t` | exact division by `t`: on ring `m` with common part `g`, the state divided by `g` is stepped by `inverse (t / g)` around ring `m / g` |
-| `modR rings states T` | the phase on ring `T` read with `positionOn`, and the number of whole turns of `T`: the phase taken back on every ring, divided exactly by `T` |
-| `addressR rings states T` | the address `(k, i)` on ring `T`, phases counted `1, ..., T` |
-| `sech x` | hyperbolic secant, the shape of one tooth (`Waves.lean`) |
-| `comb s d t` | the comb of ring `d` at sharpness `s` and tick `t`: the `sech` teeth at the multiples of `d` around `t` (`Waves.lean`) |
-| `lastPeak s d t` | the last tick up to `t` at which the comb of ring `d` stands above `1 / 2` (`Waves.lean`) |
-| `waveRelation s a b` | the relation of ring `a` to ring `b` read from the waves: the ticks from the last peak of `b` up to tick `a` (`Waves.lean`) |
+| `countMod d t` | the residue of `t` modulo `d`, by counting: add `1` per step, reset to `0` on reaching `d` |
+| `resid a b` | the residue of `a` modulo `b` |
+| `euclid a b` | the gcd of `a` and `b` by Euclid's algorithm on residues |
+| `prodMod radices c` | the residue modulo `c` of the product of `radices`, factor by factor, without forming the product |
+| `gcdProd radices m` | the gcd of `m` with the product of `radices`: `euclid (prodMod radices m) m` |
+| `radices moduli` | the radices of the mixed-radix system of `moduli` in order: modulus `m` receives `m / gcdProd (radices so far) m` |
+| `newRadix before m` | the radix modulus `m` receives after the moduli `before` |
+| `IrreducibleAfter before m` | modulus `m` receives its whole value as radix: `newRadix before m = m` |
+| `initialModuli n` | the consecutive moduli `2, 3, ..., n - 1` |
+| `evalMod ds c` | the value of a mixed-radix representation modulo `c`, by Horner's rule from the most significant digit |
+| `invMod a b` | the inverse of `a` modulo `b`, by repeated addition of `a` modulo `b` |
+| `toMixedRadix moduli residues` | the mixed-radix representation given by residues (Garner's algorithm on arbitrary moduli); `none` for incompatible residues |
+| `compareRes moduli xs ys` | compare two residue vectors on the same moduli, digit by digit from the most significant |
+| `eval ds` | the value of a mixed-radix representation |
+| `blockModulus moduli residues` | a block of moduli as one modulus: modulus = lcm of the members, residue = `eval` of their mixed-radix representation |
+| `blockModuli blocks residues` | the block moduli and block residues of a list of blocks |
+| `BlockRep` | a number given by the member residues of blocks, plus the member residues of quotient blocks for the quotient by the lcm of the blocks |
+| `baseExtend moduli residues target` | base extension: the residues on `target`, by `evalMod` |
+| `flatten x` | one list of moduli for blocks and quotient blocks: quotient block `c` with residue `k` receives `k * L + r` modulo `c` |
+| `compareBlocks x y` | flatten both numbers, extend both to the union of their moduli, compare with `compareRes` |
+| `isPrimeRes fuel moduli residues` | trial division on residues: divisors `m = 2, 3, ...` are compared with the number through their residue vectors, the residue of the number modulo `m` comes from `evalMod`; `true` when `m` equals the number or `m * m` exceeds it, `false` when `m` divides it, `none` when the fuel runs out |
+| `firstMultipleFrom lo k` | the least multiple of `k` that is at least `lo`, from one residue |
+| `atomStep lo hi atoms k` | keep `k` when the interval `lo, ..., hi` contains `a` and `a + k` with `k ∣ a`, and no atom kept before divides `k` |
+| `intervalAtoms lo hi` | the differences `2, ..., hi - lo` in order, each kept by `atomStep` |
+| `pointwise f moduli xs ys` | apply `f m a b` for each modulus `m` to its residues `a` and `b` |
+| `addRes`, `subRes`, `mulRes` | sum, difference and product of two numbers, modulus by modulus |
+| `addOverflow`, `subUnderflow` | a sum overflows when its residue vector compares below the first term's; a difference underflows when the first term compares below the second |
+| `powRes moduli xs e` | `e` products modulus by modulus, starting from the residues of `1` |
+| `divModuli moduli t` | the moduli `m / gcd(m, t)` of the quotient by `t` |
+| `exactDivRes moduli residues t` | exact division by `t`: for modulus `m` and `g = gcd(m, t)`, the residue divided by `g` times `invMod (t / g)` modulo `m / g` |
+| `divModRes moduli residues T` | division with remainder by `T`: the remainder from `evalMod`, and the quotient by subtracting it and dividing exactly by `T` |
+| `addressRes moduli residues T` | the address `(k, i)` with respect to `T`, offsets counted `1, ..., T` |
+| `sech x` | hyperbolic secant (`Waves.lean`) |
+| `sechComb s d t` | the sum of the `sech` pulses at scale `s` centred at the multiples of `d` around `t` (`Waves.lean`) |
+| `lastPeak s d t` | the last step up to `t` at which `sechComb s d` exceeds `1 / 2` (`Waves.lean`) |
+| `waveResid s a b` | the residue of `a` modulo `b` read from the comb: the steps from the last peak for `b` up to `a` (`Waves.lean`) |
 
 ## What is proved
 
 | Step | File | Statement |
 |---|---|---|
-| T1 Ticking | `Ticking.lean` | `pos d t = t % d` for every `d`, `d = 0` included; hence `relation a b = a % b` |
-| T1w Waves | `Waves.lean` | for sharpness `s ≥ 3` and every ring `d ≥ 1`: `1 / 2 < comb s d t ↔ d ∣ t`; hence `waveRelation s a b = relation a b` for `b ≥ 1`; at `s = 2` the teeth of ring `2` merge and `waveRelation 2 3 2 ≠ relation 3 2` |
-| T2 Euclid | `Euclid.lean` | `commonPart a b = Nat.gcd a b` |
-| T3 Drum | `Drum.lean` | `turnOn radices c = radices.prod % c`; `commonPartWithTurn radices m = gcd (radices.prod) m`; the product of the level sizes of positive rings is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
-| T4 Consecutive rings | `Bridge.lean` | for `n ≥ 2`: `levelSize (ringsBelow n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (ringsBelow n) n ↔ Nat.Prime n`; `Real.log (levelSize (ringsBelow n) n) = Λ n` (von Mangoldt) |
-| T5 Compare | `Compare.lean` | for positive rings and states `n % m`: `digitsOf` returns the mixed-radix digits of `n` modulo the drum's turn, on the levels `levels rings`; `positionOn ds c = value ds % c`; for `n, n'` below the turn, `compareOn rings (states of n) (states of n') = some (compare n n')` |
-| T5c Packs | `Packs.lean` | a pack of positive rings in states `n % m` is one ring of period `lcm` in state `n % lcm`; `flatten` gives every ring `c` of the drum of packs and rotation packs the state `n % c`; below the turn, `extend` gives `n % c` on any ring `c`; for `n` below the lcm of all rings of its packing and `n'` below that of its own, `comparePacked (Packed.of n D K) (Packed.of n' D' K') = some (compare n n')` |
-| T6 Primality | `Primality.lean` | for positive rings with `n` and `2` below the turn: every answer of `primeOn` on the states `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the turn |
-| T7 Window atoms | `Atoms.lean` | `k ∈ windowAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the window is an atom; a window of `L` rings recovers every prime `p` with `2 * p ≤ L` |
-| T8 Arithmetic | `Arithmetic.lean` | for positive rings and states `x % m`, `y % m`: `addOn`, `mulOn`, `powOn` give the states of `x + y`, `x * y`, `x ^ e`; `subOn` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the turn); below the turn, `addWraps ↔ W ≤ x + y` and `subWraps ↔ x < y`; for `t ∣ x`, `exactDivOn` gives the states of `x / t` on the rings `m / gcd m t`, and `x / t` is below their turn; `modR` gives `(x % T, states of x / T)`; for `0 < x`, `addressR` gives `i = (x - 1) % T + 1` and the states of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the rings `p ^ (v + 1), ..., p ^ (v + j)` multiply the turn by `p ^ j` |
+| T1 Residues | `Residues.lean` | `countMod d t = t % d` for every `d`, `d = 0` included; hence `resid a b = a % b` |
+| T1w Sech comb | `Waves.lean` | for scale `s ≥ 3` and every modulus `d ≥ 1`: `1 / 2 < sechComb s d t ↔ d ∣ t`; hence `waveResid s a b = resid a b` for `b ≥ 1`; at `s = 2` the pulses for `d = 2` overlap and `waveResid 2 3 2 ≠ resid 3 2` |
+| T2 Euclid | `Euclid.lean` | `euclid a b = Nat.gcd a b` |
+| T3 Radices | `Radices.lean` | `prodMod radices c = radices.prod % c`; `gcdProd radices m = gcd (radices.prod) m`; the product of the radices of positive moduli is their least common multiple; `IrreducibleAfter before m ↔ Nat.Coprime (lcm of before) m` |
+| T4 Consecutive moduli | `InitialModuli.lean` | for `n ≥ 2`: `newRadix (initialModuli n) n` is `p` when `n = p ^ k` is a prime power and `1` otherwise; `IrreducibleAfter (initialModuli n) n ↔ Nat.Prime n`; `Real.log (newRadix (initialModuli n) n) = Λ n` (von Mangoldt) |
+| T5 Compare | `Compare.lean` | for positive moduli and residues `n % m`: `toMixedRadix` returns the mixed-radix digits of `n` modulo the lcm, on the radices `radices moduli`; `evalMod ds c = eval ds % c`; for `n, n'` below the lcm, `compareRes moduli (residues of n) (residues of n') = some (compare n n')` |
+| T5c Blocks | `Blocks.lean` | a block of positive moduli with residues `n % m` is one modulus `lcm` with residue `n % lcm`; `flatten` gives every modulus `c` of the blocks and quotient blocks the residue `n % c`; below the lcm, `baseExtend` gives `n % c` on any modulus `c`; for `n` below the lcm of all moduli of its blocking and `n'` below that of its own, `compareBlocks (BlockRep.of n D K) (BlockRep.of n' D' K') = some (compare n n')` |
+| T6 Primality | `Primality.lean` | for positive moduli with `n` and `2` below the lcm: every answer of `isPrimeRes` on the residues `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the lcm |
+| T7 Interval atoms | `Atoms.lean` | `k ∈ intervalAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the interval is an atom; an interval of length `L` gives every prime `p` with `2 * p ≤ L` |
+| T8 Arithmetic | `Arithmetic.lean` | for positive moduli and residues `x % m`, `y % m`: `addRes`, `mulRes`, `powRes` give the residues of `x + y`, `x * y`, `x ^ e`; `subRes` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the lcm); below the lcm, `addOverflow ↔ W ≤ x + y` and `subUnderflow ↔ x < y`; for `t ∣ x`, `exactDivRes` gives the residues of `x / t` on the moduli `m / gcd m t`, and `x / t` is below their lcm; `divModRes` gives `(x % T, residues of x / T)`; for `0 < x`, `addressRes` gives `i = (x - 1) % T + 1` and the residues of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the moduli `p ^ (v + 1), ..., p ^ (v + j)` multiply the lcm by `p ^ j` |
 
 `FORMULAS.md` states the same results in standard notation, each with its Lean theorem.
 
-T3 holds for any list of positive rings, in any order. T4 is the special case of the
-consecutive rings `2, ..., n - 1`.
+T3 holds for any list of positive moduli, in any order. T4 is the special case of the
+consecutive moduli `2, ..., n - 1`.
 
 Each file also contains checks evaluated by the kernel (`decide`), e.g.
-`levels [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1]`.
+`radices [2, 3, 4, 5, 6, 7, 8, 9, 10] = [2, 3, 2, 5, 1, 7, 2, 3, 1]`.
 
-The mechanism forms no number from ring states beyond a ring's period: `value` is formed
-only as the state of a pack ring, which is below the pack's period. `Packed.of`, which
-writes `n` onto packs, appears only in statements.
+The definitions assemble no number from residues beyond a modulus: `eval` is formed only as
+the residue of a block modulus, which is below that modulus. `BlockRep.of`, which writes `n`
+into blocks, appears only in statements.
 
 ## Repository layout
 
@@ -87,14 +91,14 @@ writes `n` onto packs, appears only in statements.
 lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
   Irreducibility.lean       root module, imports everything below
   Irreducibility/
-    Defs.lean               the mechanism (no Mathlib)
-    Ticking.lean            T1
+    Defs.lean               the definitions (no Mathlib)
+    Residues.lean           T1
     Waves.lean              T1w
     Euclid.lean             T2
-    Drum.lean               T3
-    Bridge.lean             T4
+    Radices.lean            T3
+    InitialModuli.lean      T4
     Compare.lean            T5
-    Packs.lean              T5c
+    Blocks.lean             T5c
     Primality.lean          T6
     Atoms.lean              T7
     Arithmetic.lean         T8
@@ -114,5 +118,5 @@ To list the axioms a theorem depends on, run `lake env lean` on a file containin
 
 ```lean
 import Irreducibility
-#print axioms Irreducibility.irreducibleAfter_ringsBelow_iff
+#print axioms Irreducibility.irreducibleAfter_initialModuli_iff
 ```

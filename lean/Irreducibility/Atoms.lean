@@ -1,20 +1,21 @@
 module
 
 public import Mathlib
-public import Irreducibility.Ticking
+public import Irreducibility.Residues
 
 /-!
-# T7: atoms of a window
+# T7: atoms of an interval
 
-A window of consecutive rings `lo, ..., hi` reads a step `k` from two of its rings `a` and
-`a + k` with `a` at `0` on ring `k`. The steps are taken in order, each kept unless it
-stands at `0` on a step kept before.
+An interval of consecutive integers `lo, ..., hi` gives a difference `k` when it contains `a`
+and `a + k` with `k ∣ a`. The differences are taken in order, each kept unless it is divisible
+by a difference kept before.
 
 * `firstMultipleFrom_spec`: `firstMultipleFrom lo k` is the least multiple of `k` from `lo`.
-* `mem_windowAtoms`: the atoms are exactly the primes `p` with two consecutive multiples
-  `a, a + p` in the window. An atom is never composite: when `q * r` has two consecutive
-  multiples in the window, so does `q`.
-* `prime_mem_windowAtoms`: a window of `L` rings recovers every prime `p` with `2 * p ≤ L`.
+* `mem_intervalAtoms`: the atoms are exactly the primes `p` with two consecutive multiples
+  `a, a + p` in the interval. An atom is never composite: when `q * r` has two consecutive
+  multiples in the interval, so does `q`.
+* `prime_mem_intervalAtoms`: an interval of length `L` gives every prime `p` with
+  `2 * p ≤ L`.
 -/
 
 namespace Irreducibility
@@ -27,7 +28,7 @@ public theorem firstMultipleFrom_spec (lo k : Nat) (hk : 0 < k) :
       ∀ a, lo ≤ a → k ∣ a → firstMultipleFrom lo k ≤ a := by
   have hdm := Nat.div_add_mod lo k
   have hr := Nat.mod_lt lo hk
-  simp only [firstMultipleFrom, relation_eq_mod]
+  simp only [firstMultipleFrom, resid_eq_mod]
   split_ifs with h0
   · exact ⟨Nat.dvd_of_mod_eq_zero h0, le_rfl, by omega, fun _ h _ => h⟩
   · refine ⟨⟨lo / k + 1, by rw [Nat.mul_add]; omega⟩, by omega, by omega, ?_⟩
@@ -37,8 +38,8 @@ public theorem firstMultipleFrom_spec (lo k : Nat) (hk : 0 < k) :
     rw [Nat.mul_succ] at this
     omega
 
-/-- The window `lo, ..., hi` holds two rings `a` and `a + k` with `a` at `0` on ring `k`
-exactly when the first such `a` from `lo` does. -/
+/-- The interval `lo, ..., hi` contains `a` and `a + k` with `k ∣ a` exactly when the least
+such `a` from `lo` does. -/
 theorem firstMultipleFrom_add_le_iff (lo hi k : Nat) (hk : 0 < k) :
     firstMultipleFrom lo k + k ≤ hi ↔ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi := by
   obtain ⟨hd, hlo, -, hmin⟩ := firstMultipleFrom_spec lo k hk
@@ -48,34 +49,34 @@ theorem firstMultipleFrom_add_le_iff (lo hi k : Nat) (hk : 0 < k) :
     have := hmin a ha hka
     omega
 
-theorem ringsBelow_succ {n : Nat} (hn : 2 ≤ n) : ringsBelow (n + 1) = ringsBelow n ++ [n] := by
-  simp only [ringsBelow, List.range_succ]
+theorem initialModuli_succ {n : Nat} (hn : 2 ≤ n) : initialModuli (n + 1) = initialModuli n ++ [n] := by
+  simp only [initialModuli, List.range_succ]
   exact List.drop_append_of_le_length (by simp [hn])
 
-theorem ringsBelow_of_le_two {n : Nat} (hn : n ≤ 2) : ringsBelow n = [] := by
-  simp only [ringsBelow, List.drop_eq_nil_iff, List.length_range]
+theorem initialModuli_of_le_two {n : Nat} (hn : n ≤ 2) : initialModuli n = [] := by
+  simp only [initialModuli, List.drop_eq_nil_iff, List.length_range]
   exact hn
 
-/-- After the steps `2, ..., n - 1`, the atoms kept are exactly the primes below `n` with two
-consecutive multiples in the window. -/
+/-- After the differences `2, ..., n - 1`, the atoms kept are exactly the primes below `n`
+with two consecutive multiples in the interval. -/
 theorem mem_foldl_atomStep (lo hi : Nat) :
-    ∀ n k, k ∈ (ringsBelow n).foldl (atomStep lo hi) [] ↔
+    ∀ n k, k ∈ (initialModuli n).foldl (atomStep lo hi) [] ↔
       k < n ∧ k.Prime ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi
   | n, k => by
     rcases Nat.lt_or_ge n 3 with hn | hn
-    · rw [ringsBelow_of_le_two (by omega)]
+    · rw [initialModuli_of_le_two (by omega)]
       simp only [List.foldl_nil, List.not_mem_nil, false_iff]
       rintro ⟨hk, hp, -⟩
       have := hp.two_le
       omega
     · obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
       have ih := mem_foldl_atomStep lo hi m
-      set A := (ringsBelow m).foldl (atomStep lo hi) [] with hA
+      set A := (initialModuli m).foldl (atomStep lo hi) [] with hA
       have hcond : (firstMultipleFrom lo m + m ≤ hi ∧
-          A.all (fun p => relation m p != 0) = true) ↔
+          A.all (fun p => resid m p != 0) = true) ↔
           m.Prime ∧ ∃ a, lo ≤ a ∧ m ∣ a ∧ a + m ≤ hi := by
         rw [firstMultipleFrom_add_le_iff lo hi m (by omega)]
-        simp only [List.all_eq_true, bne_iff_ne, ne_eq, relation_eq_mod]
+        simp only [List.all_eq_true, bne_iff_ne, ne_eq, resid_eq_mod]
         constructor
         · rintro ⟨⟨a, ha, hma, hah⟩, hall⟩
           refine ⟨?_, a, ha, hma, hah⟩
@@ -91,7 +92,7 @@ theorem mem_foldl_atomStep (lo hi : Nat) :
           rcases hp.eq_one_or_self_of_dvd p (Nat.dvd_of_mod_eq_zero hz) with h | h
           · exact hpp.one_lt.ne' h
           · omega
-      rw [ringsBelow_succ (by omega), List.foldl_append, List.foldl_cons, List.foldl_nil,
+      rw [initialModuli_succ (by omega), List.foldl_append, List.foldl_cons, List.foldl_nil,
         ← hA, atomStep]
       split_ifs with hc
       · rw [List.mem_append, List.mem_singleton, ih]
@@ -114,25 +115,25 @@ theorem mem_foldl_atomStep (lo hi : Nat) :
           · obtain rfl : k = m := by omega
             exact absurd (hcond.2 h) hc
 
-/-- The atoms of the window `lo, ..., hi` are exactly the primes `p` with two consecutive
-multiples `a, a + p` in the window. -/
-public theorem mem_windowAtoms (lo hi k : Nat) :
-    k ∈ windowAtoms lo hi ↔ k.Prime ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi := by
-  rw [windowAtoms, mem_foldl_atomStep]
+/-- The atoms of the interval `lo, ..., hi` are exactly the primes `p` with two consecutive
+multiples `a, a + p` in the interval. -/
+public theorem mem_intervalAtoms (lo hi k : Nat) :
+    k ∈ intervalAtoms lo hi ↔ k.Prime ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi := by
+  rw [intervalAtoms, mem_foldl_atomStep]
   constructor
   · exact fun h => h.2
   · rintro ⟨hp, a, ha, hka, hah⟩
     exact ⟨by omega, hp, a, ha, hka, hah⟩
 
-/-- Every atom of a window is prime. -/
-public theorem prime_of_mem_windowAtoms {lo hi k : Nat} (h : k ∈ windowAtoms lo hi) :
+/-- Every atom of an interval is prime. -/
+public theorem prime_of_mem_intervalAtoms {lo hi k : Nat} (h : k ∈ intervalAtoms lo hi) :
     k.Prime :=
-  ((mem_windowAtoms lo hi k).1 h).1
+  ((mem_intervalAtoms lo hi k).1 h).1
 
-/-- A window of `hi + 1 - lo` rings recovers every prime `p` with `2 * p ≤ hi + 1 - lo`. -/
-public theorem prime_mem_windowAtoms {lo hi p : Nat} (hp : p.Prime) (hL : lo + 2 * p ≤ hi + 1) :
-    p ∈ windowAtoms lo hi := by
+/-- An interval of length `hi + 1 - lo` gives every prime `p` with `2 * p ≤ hi + 1 - lo`. -/
+public theorem prime_mem_intervalAtoms {lo hi p : Nat} (hp : p.Prime) (hL : lo + 2 * p ≤ hi + 1) :
+    p ∈ intervalAtoms lo hi := by
   obtain ⟨hd, hlo, hlt, -⟩ := firstMultipleFrom_spec lo p hp.pos
-  exact (mem_windowAtoms lo hi p).2 ⟨hp, _, hlo, hd, by omega⟩
+  exact (mem_intervalAtoms lo hi p).2 ⟨hp, _, hlo, hd, by omega⟩
 
 end Irreducibility

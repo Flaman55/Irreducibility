@@ -1,26 +1,25 @@
 module
 
 public import Mathlib
-public import Irreducibility.Drum
+public import Irreducibility.Radices
 
 /-!
-# T4: consecutive rings
+# T4: consecutive moduli
 
-Take the rings `2, 3, ..., n - 1` in order and put ring `n` (`2 ≤ n`) on top. Its level has
-size `p` when `n = p ^ k` is a prime power and size `1` otherwise. Hence:
+Take the moduli `2, 3, ..., n - 1` in order and append modulus `n` (`2 ≤ n`). Its radix is
+`p` when `n = p ^ k` is a prime power and `1` otherwise. Hence:
 
-* `irreducibleAfter_ringsBelow_iff`: ring `n` is irreducible exactly when `n` is prime;
-* `log_levelSize_ringsBelow`: the logarithm of its level size is the von Mangoldt function
+* `irreducibleAfter_initialModuli_iff`: modulus `n` is irreducible exactly when `n` is prime;
+* `log_newRadix_initialModuli`: the logarithm of its radix is the von Mangoldt function
   `Λ n`.
 
-The mechanism itself does not use primes. They appear only in the statements that describe
-what it produces.
+The definitions do not use primes. Primes appear only in the statements about their results.
 -/
 
 namespace Irreducibility
 
-public theorem mem_ringsBelow {n x : Nat} : x ∈ ringsBelow n ↔ 2 ≤ x ∧ x < n := by
-  simp only [ringsBelow, List.mem_iff_getElem, List.length_drop, List.length_range,
+public theorem mem_initialModuli {n x : Nat} : x ∈ initialModuli n ↔ 2 ≤ x ∧ x < n := by
+  simp only [initialModuli, List.mem_iff_getElem, List.length_drop, List.length_range,
     List.getElem_drop, List.getElem_range]
   constructor
   · rintro ⟨i, hi, rfl⟩; omega
@@ -41,7 +40,7 @@ theorem dvd_foldl_lcm_of_mem {l : List Nat} {x : Nat} (a : Nat) (hx : x ∈ l) :
     · rw [hx]; exact (Nat.dvd_lcm_right a y).trans (dvd_foldl_lcm_init _ _)
     · exact ih _ hx
 
-/-- A prime power that divides none of the rings does not divide their common turn. -/
+/-- A prime power that divides none of the moduli does not divide their lcm. -/
 theorem not_pow_dvd_foldl_lcm {p k : Nat} (hp : p.Prime) :
     ∀ (l : List Nat) (a : Nat), a ≠ 0 → ¬ p ^ k ∣ a → (∀ x ∈ l, x ≠ 0 ∧ ¬ p ^ k ∣ x) →
       ¬ p ^ k ∣ l.foldl Nat.lcm a
@@ -58,16 +57,16 @@ theorem not_pow_dvd_foldl_lcm {p k : Nat} (hp : p.Prime) :
       exact ⟨ha, hx⟩
     · exact fun y hy => hl y (by simp [hy])
 
-/-- Below `p ^ k` the rings share `p ^ (k - 1)` with ring `p ^ k`. -/
-theorem gcd_turn_prime_pow {p k : Nat} (hp : p.Prime) (hk : 0 < k) :
-    Nat.gcd ((ringsBelow (p ^ k)).foldl Nat.lcm 1) (p ^ k) = p ^ (k - 1) := by
-  set L := (ringsBelow (p ^ k)).foldl Nat.lcm 1 with hL
+/-- The lcm of the moduli below `p ^ k` has gcd `p ^ (k - 1)` with `p ^ k`. -/
+theorem gcd_lcm_prime_pow {p k : Nat} (hp : p.Prime) (hk : 0 < k) :
+    Nat.gcd ((initialModuli (p ^ k)).foldl Nat.lcm 1) (p ^ k) = p ^ (k - 1) := by
+  set L := (initialModuli (p ^ k)).foldl Nat.lcm 1 with hL
   have hpk : p ^ (k - 1) < p ^ k := Nat.pow_lt_pow_right hp.one_lt (by omega)
   have hone : 1 < p ^ k := Nat.one_lt_pow (by omega) hp.one_lt
   have hlow : p ^ (k - 1) ∣ L := by
     rcases Nat.lt_or_ge 1 k with h | h
     · apply dvd_foldl_lcm_of_mem
-      rw [mem_ringsBelow]
+      rw [mem_initialModuli]
       refine ⟨?_, hpk⟩
       calc 2 ≤ p := hp.two_le
         _ = p ^ 1 := (pow_one p).symm
@@ -77,7 +76,7 @@ theorem gcd_turn_prime_pow {p k : Nat} (hp : p.Prime) (hk : 0 < k) :
     apply not_pow_dvd_foldl_lcm hp _ 1 one_ne_zero
     · intro h; have := Nat.le_of_dvd one_pos h; omega
     · intro x hx
-      rw [mem_ringsBelow] at hx
+      rw [mem_initialModuli] at hx
       refine ⟨by omega, fun h => ?_⟩
       have := Nat.le_of_dvd (by omega) h; omega
   obtain ⟨j, hj, hg⟩ := (Nat.dvd_prime_pow hp).1 (Nat.gcd_dvd_right L (p ^ k))
@@ -88,9 +87,9 @@ theorem gcd_turn_prime_pow {p k : Nat} (hp : p.Prime) (hk : 0 < k) :
   rw [Nat.pow_dvd_pow_iff_le_right hp.one_lt] at h1
   rw [hg]; congr 1; omega
 
-/-- When `n` is not a prime power, the rings below `n` carry all of ring `n`. -/
-theorem gcd_turn_not_prime_pow {n : Nat} (hn : 2 ≤ n) (h : ¬ IsPrimePow n) :
-    Nat.gcd ((ringsBelow n).foldl Nat.lcm 1) n = n := by
+/-- When `n` is not a prime power, the lcm of the moduli below `n` is divisible by `n`. -/
+theorem gcd_lcm_not_prime_pow {n : Nat} (hn : 2 ≤ n) (h : ¬ IsPrimePow n) :
+    Nat.gcd ((initialModuli n).foldl Nat.lcm 1) n = n := by
   have hn0 : n ≠ 0 := by omega
   have hp : n.minFac.Prime := Nat.minFac_prime (by omega)
   set p := n.minFac
@@ -113,30 +112,30 @@ theorem gcd_turn_not_prime_pow {n : Nat} (hn : 2 ≤ n) (h : ¬ IsPrimePow n) :
       exact ⟨p, n.factorization p, hp, hk, by rw [← ha_def, ← hab, hb1, Nat.mul_one]⟩
   have han : a < n := by rw [← hab]; nlinarith
   have hbn : b < n := by rw [← hab]; nlinarith
-  have haL := dvd_foldl_lcm_of_mem (l := ringsBelow n) 1 (mem_ringsBelow.2 ⟨by omega, han⟩)
-  have hbL := dvd_foldl_lcm_of_mem (l := ringsBelow n) 1 (mem_ringsBelow.2 ⟨by omega, hbn⟩)
+  have haL := dvd_foldl_lcm_of_mem (l := initialModuli n) 1 (mem_initialModuli.2 ⟨by omega, han⟩)
+  have hbL := dvd_foldl_lcm_of_mem (l := initialModuli n) 1 (mem_initialModuli.2 ⟨by omega, hbn⟩)
   apply Nat.gcd_eq_right
   have := Nat.Coprime.mul_dvd_of_dvd_of_dvd hcop haL hbL
   rwa [hab] at this
 
-/-- The level of ring `n` on top of the rings `2, ..., n - 1`: the prime `p` when
+/-- The radix of modulus `n` after the moduli `2, ..., n - 1`: the prime `p` when
 `n = p ^ k`, otherwise `1`. -/
-public theorem levelSize_ringsBelow {n : Nat} (hn : 2 ≤ n) :
-    levelSize (ringsBelow n) n = if IsPrimePow n then n.minFac else 1 := by
-  rw [levelSize_eq _ _ (fun x hx => by have := mem_ringsBelow.1 hx; omega)]
+public theorem newRadix_initialModuli {n : Nat} (hn : 2 ≤ n) :
+    newRadix (initialModuli n) n = if IsPrimePow n then n.minFac else 1 := by
+  rw [newRadix_eq _ _ (fun x hx => by have := mem_initialModuli.1 hx; omega)]
   split_ifs with h
   · rw [isPrimePow_nat_iff] at h
     obtain ⟨p, k, hp, hk, rfl⟩ := h
-    rw [gcd_turn_prime_pow hp hk, hp.pow_minFac hk.ne']
+    rw [gcd_lcm_prime_pow hp hk, hp.pow_minFac hk.ne']
     have hsplit : p ^ k = p ^ (k - 1) * p := by
       rw [← pow_succ]; congr 1; omega
     rw [hsplit, Nat.mul_div_cancel_left _ (pow_pos hp.pos _)]
-  · rw [gcd_turn_not_prime_pow hn h, Nat.div_self (by omega)]
+  · rw [gcd_lcm_not_prime_pow hn h, Nat.div_self (by omega)]
 
-/-- Ring `n` is irreducible after the rings `2, ..., n - 1` exactly when `n` is prime. -/
-public theorem irreducibleAfter_ringsBelow_iff {n : Nat} (hn : 2 ≤ n) :
-    IrreducibleAfter (ringsBelow n) n ↔ n.Prime := by
-  rw [IrreducibleAfter, levelSize_ringsBelow hn]
+/-- Modulus `n` is irreducible after the moduli `2, ..., n - 1` exactly when `n` is prime. -/
+public theorem irreducibleAfter_initialModuli_iff {n : Nat} (hn : 2 ≤ n) :
+    IrreducibleAfter (initialModuli n) n ↔ n.Prime := by
+  rw [IrreducibleAfter, newRadix_initialModuli hn]
   split_ifs with h
   · rw [Nat.prime_def_minFac]
     exact ⟨fun h1 => ⟨hn, h1⟩, fun h1 => h1.2⟩
@@ -144,17 +143,17 @@ public theorem irreducibleAfter_ringsBelow_iff {n : Nat} (hn : 2 ≤ n) :
     · intro h1; omega
     · intro hp; exact absurd hp.isPrimePow h
 
-/-- The logarithm of the level size of ring `n` is the von Mangoldt function. -/
-public theorem log_levelSize_ringsBelow {n : Nat} (hn : 2 ≤ n) :
-    Real.log (levelSize (ringsBelow n) n) = ArithmeticFunction.vonMangoldt n := by
-  rw [levelSize_ringsBelow hn, ArithmeticFunction.vonMangoldt_apply]
+/-- The logarithm of the radix of modulus `n` is the von Mangoldt function. -/
+public theorem log_newRadix_initialModuli {n : Nat} (hn : 2 ≤ n) :
+    Real.log (newRadix (initialModuli n) n) = ArithmeticFunction.vonMangoldt n := by
+  rw [newRadix_initialModuli hn, ArithmeticFunction.vonMangoldt_apply]
   split_ifs <;> simp
 
 /-! ## Checks by evaluation (kernel `decide`) -/
 
-example : levelSize (ringsBelow 8) 8 = 2 := by decide
-example : levelSize (ringsBelow 9) 9 = 3 := by decide
-example : levelSize (ringsBelow 12) 12 = 1 := by decide
-example : levelSize (ringsBelow 13) 13 = 13 := by decide
+example : newRadix (initialModuli 8) 8 = 2 := by decide
+example : newRadix (initialModuli 9) 9 = 3 := by decide
+example : newRadix (initialModuli 12) 12 = 1 := by decide
+example : newRadix (initialModuli 13) 13 = 13 := by decide
 
 end Irreducibility
