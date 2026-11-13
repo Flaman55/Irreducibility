@@ -9,6 +9,7 @@ public import Irreducibility.Compare
 public import Irreducibility.Packs
 public import Irreducibility.Primality
 public import Irreducibility.Atoms
+public import Irreducibility.Arithmetic
 
 /-!
 # Irreducibility -- Lean 4 formalization

@@ -40,6 +40,14 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | `firstMultipleFrom lo k` | the first ring from `lo` on that stands at `0` on ring `k`, from one relation |
 | `atomStep lo hi atoms k` | keep step `k` when the window `lo, ..., hi` holds rings `a` and `a + k` with `a` at `0` on ring `k`, and `k` stands at `0` on no atom kept before |
 | `windowAtoms lo hi` | the steps `2, ..., hi - lo` in order, each kept by `atomStep` |
+| `ringwise f rings xs ys` | apply `f m a b` on each ring `m` to its states `a` and `b` |
+| `addOn`, `subOn`, `mulOn` | sum, difference (taken back around each ring) and product of two numbers, ring by ring |
+| `addWraps`, `subWraps` | a sum passes the end of the turn when its states compare below the first term's; a difference passes below `0` when the first term compares below the second |
+| `powOn rings xs e` | `e` products ring by ring, starting from the states of `1` |
+| `exactDivRings rings t` | the rings `m / commonPart m t` that carry the quotient by `t` |
+| `exactDivOn rings states t` | exact division by `t`: on ring `m` with common part `g`, the state divided by `g` is stepped by `inverse (t / g)` around ring `m / g` |
+| `modR rings states T` | the phase on ring `T` read with `positionOn`, and the number of whole turns of `T`: the phase taken back on every ring, divided exactly by `T` |
+| `addressR rings states T` | the address `(k, i)` on ring `T`, phases counted `1, ..., T` |
 
 ## What is proved
 
@@ -53,6 +61,7 @@ All definitions are in `lean/Irreducibility/Defs.lean`, which does not import Ma
 | T5c Packs | `Packs.lean` | a pack of positive rings in states `n % m` is one ring of period `lcm` in state `n % lcm`; `flatten` gives every ring `c` of the drum of packs and rotation packs the state `n % c`; below the turn, `extend` gives `n % c` on any ring `c`; for `n` below the lcm of all rings of its packing and `n'` below that of its own, `comparePacked (Packed.of n D K) (Packed.of n' D' K') = some (compare n n')` |
 | T6 Primality | `Primality.lean` | for positive rings with `n` and `2` below the turn: every answer of `primeOn` on the states `n % c` is `Nat.Prime n`; it answers once `fuel > n`, or once `fuel > Nat.sqrt n` when `(Nat.sqrt n + 1) ^ 2` is below the turn |
 | T7 Window atoms | `Atoms.lean` | `k ∈ windowAtoms lo hi ↔ Nat.Prime k ∧ ∃ a, lo ≤ a ∧ k ∣ a ∧ a + k ≤ hi`: every atom is prime, and every prime with two consecutive multiples in the window is an atom; a window of `L` rings recovers every prime `p` with `2 * p ≤ L` |
+| T8 Arithmetic | `Arithmetic.lean` | for positive rings and states `x % m`, `y % m`: `addOn`, `mulOn`, `powOn` give the states of `x + y`, `x * y`, `x ^ e`; `subOn` gives those of `x + (W - y)`, and of `x - y` when `y ≤ x` (`W` = the turn); below the turn, `addWraps ↔ W ≤ x + y` and `subWraps ↔ x < y`; for `t ∣ x`, `exactDivOn` gives the states of `x / t` on the rings `m / gcd m t`, and `x / t` is below their turn; `modR` gives `(x % T, states of x / T)`; for `0 < x`, `addressR` gives `i = (x - 1) % T + 1` and the states of `k = (x - 1) / T + 1`, so `x = T * (k - 1) + i`; when `p ^ v` is the highest power of a prime `p` dividing `W`, the rings `p ^ (v + 1), ..., p ^ (v + j)` multiply the turn by `p ^ j` |
 
 T3 holds for any list of positive rings, in any order. T4 is the special case of the
 consecutive rings `2, ..., n - 1`.
@@ -79,6 +88,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Packs.lean              T5c
     Primality.lean          T6
     Atoms.lean              T7
+    Arithmetic.lean         T8
 Latex/                      paper sources (in preparation)
 ```
 
