@@ -10,7 +10,7 @@ Primes appear only in the theorems about the results.
 
 Lean/Mathlib `v4.35.0`. `lake build` is green with no `sorry`, `admit` or `native_decide`.
 The only axioms used are `propext`, `Quot.sound` and `Classical.choice`.
-License: Apache-2.0.
+License: Apache-2.0. Citation metadata: `CITATION.cff`.
 
 ## Definitions
 
@@ -113,6 +113,7 @@ lean/                       Lean 4 project (lakefile.toml, lean-toolchain)
     Multiplicative.lean     T9
 FORMULAS.md                 the proved statements in standard notation
 Latex/                      the paper: irreducibility.tex and irreducibility.pdf
+CITATION.cff                citation metadata
 ```
 
 ## Build

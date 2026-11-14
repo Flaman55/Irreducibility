@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+type: software
+title: "Irreducible moduli: a formally verified residue number system over arbitrary moduli"
+authors:
+  - family-names: Flamandzki
+    given-names: Artur
+repository-code: "https://github.com/Flaman55/Irreducibility"
+license: Apache-2.0
+date-released: "2026-11-14"
+keywords:
+  - residue number system
+  - mixed-radix representation
+  - Lean 4
+  - Mathlib
+  - formal verification
